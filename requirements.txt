@@ -1,0 +1,46 @@
+# Compre sem Moderação - Dependências Python
+# Bob - 23/03/2026
+
+# HTTP requests
+requests==2.31.0
+urllib3==2.0.4
+
+# JSON handling
+jsonschema==4.17.3
+
+# Data processing
+pandas==2.0.3
+numpy==1.24.3
+
+# Image processing (para criativos)
+Pillow==10.0.0
+opencv-python==4.8.0.74
+
+# Web scraping (backup)
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Telegram Bot
+python-telegram-bot==20.4
+
+# Scheduling
+schedule==1.2.0
+APScheduler==3.10.2
+
+# Database (sqlite3 é built-in no Python)
+sqlalchemy==2.0.19
+
+# Logging
+loguru==0.7.0
+
+# Config
+python-dotenv==1.0.0
+pyyaml==6.0.1
+
+# Testing
+pytest==7.4.0
+pytest-cov==4.1.0
+
+# Development
+black==23.7.0
+flake8==6.0.0

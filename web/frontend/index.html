@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👜 Compre sem Moderação - As Melhores Ofertas</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B35',
+                        secondary: '#F7931E',
+                        success: '#10B981',
+                        danger: '#EF4444'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-4px); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
+        .pulse-animation { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="text-4xl">🛒</div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">Compre sem Moderação</h1>
+                        <p class="text-orange-100 text-sm">As melhores ofertas em tempo real</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="pulse-animation bg-green-500 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        🔴 AO VIVO
+                    </div>
+                    <button onclick="window.location.href='/admin'" class="bg-white text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                        👤 Admin
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Stats Bar -->
+    <div class="bg-white border-b">
+        <div class="container mx-auto px-4 py-3">
+            <div class="flex items-center justify-between text-sm">
+                <div class="flex items-center space-x-6">
+                    <span class="flex items-center space-x-2">
+                        <span class="text-green-500">●</span>
+                        <span class="text-gray-600">47 ofertas ativas</span>
+                    </span>
+                    <span class="flex items-center space-x-2">
+                        <span class="text-blue-500">📱</span>
+                        <span class="text-gray-600">23 enviadas hoje</span>
+                    </span>
+                    <span class="flex items-center space-x-2">
+                        <span class="text-purple-500">👥</span>
+                        <span class="text-gray-600">1.2K pessoas salvaram</span>
+                    </span>
+                </div>
+                <div class="text-gray-500">
+                    Última atualização: <span id="lastUpdate" class="font-medium">agora</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search & Filters -->
+    <div class="container mx-auto px-4 py-6">
+        <div class="bg-white rounded-lg shadow-sm p-4 mb-6">
+            <div class="flex flex-col md:flex-row gap-4">
+                <div class="flex-1">
+                    <input type="text" placeholder="🔍 Buscar ofertas..." 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none">
+                </div>
+                <div class="flex gap-2">
+                    <select class="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none">
+                        <option>📂 Todas Categorias</option>
+                        <option>📱 Eletrônicos</option>
+                        <option>🏠 Casa</option>
+                        <option>👕 Moda</option>
+                        <option>💄 Beleza</option>
+                    </select>
+                    <button class="bg-primary text-white px-6 py-3 rounded-lg font-medium hover:bg-opacity-90 transition-colors">
+                        Buscar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Offers Grid -->
+    <div class="container mx-auto px-4 pb-8">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">🔥 Ofertas Imperdíveis</h2>
+            <div class="flex items-center space-x-2 text-sm text-gray-600">
+                <span>Ordenar por:</span>
+                <select class="border border-gray-300 rounded px-2 py-1">
+                    <option>Maior desconto</option>
+                    <option>Menor preço</option>
+                    <option>Mais recente</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <!-- Offer Card 1 -->
+            <div class="bg-white rounded-lg shadow-sm card-hover overflow-hidden">
+                <div class="relative">
+                    <img src="https://via.placeholder.com/300x200/FF6B35/ffffff?text=iPhone+15" 
+                         alt="iPhone 15" class="w-full h-48 object-cover">
+                    <div class="absolute top-2 left-2 bg-danger text-white px-2 py-1 rounded text-xs font-bold">
+                        -25%
+                    </div>
+                    <div class="absolute top-2 right-2 bg-black bg-opacity-20 text-white p-1 rounded">
+                        ❤️
+                    </div>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2">iPhone 15 Pro 256GB Titânio Natural</h3>
+                    <div class="flex items-center space-x-2 mb-3">
+                        <span class="text-lg font-bold text-gray-800">R$ 6.999</span>
+                        <span class="text-sm text-gray-500 line-through">R$ 9.299</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <span>📦 Mercado Livre</span>
+                        <span>🚚 Frete grátis</span>
+                    </div>
+                    <button class="w-full bg-primary text-white py-2 rounded-lg font-medium hover:bg-opacity-90 transition-colors">
+                        Ver Oferta 🛒
+                    </button>
+                </div>
+            </div>
+
+            <!-- Offer Card 2 -->
+            <div class="bg-white rounded-lg shadow-sm card-hover overflow-hidden">
+                <div class="relative">
+                    <img src="https://via.placeholder.com/300x200/10B981/ffffff?text=Airfryer" 
+                         alt="Airfryer" class="w-full h-48 object-cover">
+                    <div class="absolute top-2 left-2 bg-danger text-white px-2 py-1 rounded text-xs font-bold">
+                        -60%
+                    </div>
+                    <div class="absolute top-2 right-2 bg-black bg-opacity-20 text-white p-1 rounded">
+                        ❤️
+                    </div>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2">Airfryer Mondial 5.5L Digital Preto</h3>
+                    <div class="flex items-center space-x-2 mb-3">
+                        <span class="text-lg font-bold text-gray-800">R$ 199</span>
+                        <span class="text-sm text-gray-500 line-through">R$ 499</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <span>🛍️ Magazine Luiza</span>
+                        <span>⚡ Oferta relâmpago</span>
+                    </div>
+                    <button class="w-full bg-primary text-white py-2 rounded-lg font-medium hover:bg-opacity-90 transition-colors">
+                        Ver Oferta 🛒
+                    </button>
+                </div>
+            </div>
+
+            <!-- Offer Card 3 -->
+            <div class="bg-white rounded-lg shadow-sm card-hover overflow-hidden">
+                <div class="relative">
+                    <img src="https://via.placeholder.com/300x200/8B5CF6/ffffff?text=Notebook" 
+                         alt="Notebook" class="w-full h-48 object-cover">
+                    <div class="absolute top-2 left-2 bg-danger text-white px-2 py-1 rounded text-xs font-bold">
+                        -35%
+                    </div>
+                    <div class="absolute top-2 right-2 bg-black bg-opacity-20 text-white p-1 rounded">
+                        ❤️
+                    </div>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2">Notebook Lenovo IdeaPad 3i Intel Core i5</h3>
+                    <div class="flex items-center space-x-2 mb-3">
+                        <span class="text-lg font-bold text-gray-800">R$ 2.199</span>
+                        <span class="text-sm text-gray-500 line-through">R$ 3.399</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <span>🛒 Amazon</span>
+                        <span>🚚 Frete grátis</span>
+                    </div>
+                    <button class="w-full bg-primary text-white py-2 rounded-lg font-medium hover:bg-opacity-90 transition-colors">
+                        Ver Oferta 🛒
+                    </button>
+                </div>
+            </div>
+
+            <!-- Offer Card 4 -->
+            <div class="bg-white rounded-lg shadow-sm card-hover overflow-hidden">
+                <div class="relative">
+                    <img src="https://via.placeholder.com/300x200/F59E0B/ffffff?text=Tênis" 
+                         alt="Tênis" class="w-full h-48 object-cover">
+                    <div class="absolute top-2 left-2 bg-danger text-white px-2 py-1 rounded text-xs font-bold">
+                        -45%
+                    </div>
+                    <div class="absolute top-2 right-2 bg-black bg-opacity-20 text-white p-1 rounded">
+                        ❤️
+                    </div>
+                </div>
+                <div class="p-4">
+                    <h3 class="font-semibold text-gray-800 mb-2 line-clamp-2">Tênis Adidas Ultraboost 22 Preto</h3>
+                    <div class="flex items-center space-x-2 mb-3">
+                        <span class="text-lg font-bold text-gray-800">R$ 329</span>
+                        <span class="text-sm text-gray-500 line-through">R$ 599</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
+                        <span>👟 Netshoes</span>
+                        <span>📦 Entrega expressa</span>
+                    </div>
+                    <button class="w-full bg-primary text-white py-2 rounded-lg font-medium hover:bg-opacity-90 transition-colors">
+                        Ver Oferta 🛒
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Load More -->
+        <div class="text-center mt-8">
+            <button class="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-colors">
+                Carregar mais ofertas 📦
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-300 mt-12">
+        <div class="container mx-auto px-4 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-white font-semibold mb-4">👜 Compre sem Moderação</h3>
+                    <p class="text-sm">O melhor sistema de ofertas automáticas do Brasil. Encontre as melhores promoções em tempo real.</p>
+                </div>
+                <div>
+                    <h3 class="text-white font-semibold mb-4">🔗 Links Úteis</h3>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#" class="hover:text-white">Como funciona</a></li>
+                        <li><a href="#" class="hover:text-white">Categorias</a></li>
+                        <li><a href="#" class="hover:text-white">Contato</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-white font-semibold mb-4">📱 Receba ofertas</h3>
+                    <p class="text-sm mb-4">Entre nos nossos grupos VIP:</p>
+                    <div class="flex space-x-2">
+                        <button class="bg-green-600 text-white px-3 py-2 rounded text-sm hover:bg-green-700">
+                            WhatsApp
+                        </button>
+                        <button class="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700">
+                            Telegram
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-4 text-center text-sm">
+                <p>&copy; 2026 Compre sem Moderação. Criado por Billy Bot + Vinícius G. Lopes</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Update last update time
+        function updateLastUpdate() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('pt-BR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            document.getElementById('lastUpdate').textContent = timeString;
+        }
+        
+        updateLastUpdate();
+        setInterval(updateLastUpdate, 60000); // Update every minute
+
+        // Simulate real-time updates
+        setTimeout(() => {
+            const statsElements = document.querySelectorAll('.text-gray-600');
+            if (statsElements[0]) {
+                statsElements[0].textContent = '48 ofertas ativas';
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

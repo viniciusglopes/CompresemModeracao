@@ -1,0 +1,59 @@
+# Baratão da Net - .gitignore
+
+# Node
+node_modules/
+npm-debug.log*
+package-lock.json
+
+# Configurações sensíveis
+config/config.json
+*.env
+.env.*
+
+# Dados e logs
+data/offers/*.json
+data/products/*.json
+data/analytics/*.json
+logs/*.log
+logs/*.txt
+
+# Criativos gerados
+creative/output/*
+creative/temp/*
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# API keys e tokens (extra proteção)
+*key*
+*token*
+*secret*
+# *api* removido — bloqueava a pasta app/admin/apis

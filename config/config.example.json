@@ -1,0 +1,96 @@
+{
+  "projeto": "CompresemModeracao",
+  "versao": "1.0.0",
+  "criado": "2026-03-23",
+  
+  "apis": {
+    "mercadolivre": {
+      "client_id": "YOUR_ML_CLIENT_ID",
+      "client_secret": "YOUR_ML_CLIENT_SECRET",
+      "access_token": "YOUR_ML_ACCESS_TOKEN",
+      "base_url": "https://api.mercadolibre.com"
+    },
+    "shopee": {
+      "partner_id": "YOUR_SHOPEE_PARTNER_ID",
+      "partner_key": "YOUR_SHOPEE_PARTNER_KEY",
+      "base_url": "https://partner.shopeemobile.com/api"
+    },
+    "amazon": {
+      "access_key": "YOUR_AMAZON_ACCESS_KEY",
+      "secret_key": "YOUR_AMAZON_SECRET_KEY",
+      "associate_tag": "YOUR_AMAZON_ASSOCIATE_TAG",
+      "base_url": "https://webservices.amazon.com"
+    }
+  },
+  
+  "afiliados": {
+    "mercadolivre": {
+      "user_id": "YOUR_ML_USER_ID",
+      "tag": "YOUR_ML_AFFILIATE_TAG"
+    },
+    "amazon": {
+      "associate_id": "YOUR_AMAZON_ASSOCIATE_ID"
+    }
+  },
+  
+  "dispatch": {
+    "whatsapp": {
+      "evolution_url": "http://your-evolution-api.com",
+      "evolution_token": "YOUR_EVOLUTION_TOKEN",
+      "instance": "YOUR_INSTANCE_NAME"
+    },
+    "telegram": {
+      "bot_token": "YOUR_TELEGRAM_BOT_TOKEN",
+      "channels": [
+        "@compresemmoderacao",
+        "@ofertas_vip"
+      ]
+    },
+    "grupos_whatsapp": [
+      "5511999999999-1234567890@g.us",
+      "5511888888888-0987654321@g.us"
+    ]
+  },
+  
+  "filtros": {
+    "desconto_minimo": 30,
+    "preco_maximo": 500,
+    "categorias": [
+      "eletronicos",
+      "casa",
+      "moda",
+      "beleza"
+    ],
+    "blacklist": [
+      "replica",
+      "falsificado",
+      "usado"
+    ]
+  },
+  
+  "criativos": {
+    "templates": {
+      "width": 1080,
+      "height": 1080,
+      "formato": "quadrado",
+      "marca_dagua": true
+    },
+    "textos": {
+      "call_to_action": [
+        "🔥 OFERTA RELÂMPAGO!",
+        "💸 PREÇO IMPERDÍVEL!",
+        "⚡ SÓ HOJE!",
+        "🎯 APROVEITE JÁ!"
+      ]
+    }
+  },
+  
+  "monitoramento": {
+    "intervalo_minutos": 15,
+    "max_ofertas_por_hora": 10,
+    "horario_ativo": {
+      "inicio": "08:00",
+      "fim": "23:00"
+    }
+  }
+}

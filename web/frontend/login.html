@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Login - Compre sem Moderação Admin</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B35',
+                        secondary: '#F7931E'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <!-- Login Container -->
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="text-5xl mb-4">🔐</div>
+            <h1 class="text-2xl font-bold text-gray-800">Área Administrativa</h1>
+            <p class="text-gray-600 mt-2">Compre sem Moderação - Painel de Controle</p>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="space-y-6">
+            <!-- Email -->
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                    📧 E-mail
+                </label>
+                <input type="email" id="email" name="email" required
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                       placeholder="seu@email.com">
+            </div>
+
+            <!-- Password -->
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                    🔒 Senha
+                </label>
+                <input type="password" id="password" name="password" required
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-colors"
+                       placeholder="Digite sua senha">
+            </div>
+
+            <!-- Remember me -->
+            <div class="flex items-center">
+                <input type="checkbox" id="remember" class="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded">
+                <label for="remember" class="ml-2 text-sm text-gray-700">
+                    Lembrar-me por 7 dias
+                </label>
+            </div>
+
+            <!-- Login Button -->
+            <button type="submit" id="loginBtn" 
+                    class="w-full gradient-bg text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity">
+                🚀 Fazer Login
+            </button>
+        </form>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="hidden mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm">
+            <span class="font-medium">❌ Erro:</span>
+            <span id="errorText">Credenciais inválidas</span>
+        </div>
+
+        <!-- Success Message -->
+        <div id="successMessage" class="hidden mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-sm">
+            <span class="font-medium">✅ Sucesso:</span>
+            <span>Login realizado! Redirecionando...</span>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 text-center">
+            <p class="text-sm text-gray-500">
+                <a href="/" class="text-primary hover:underline">← Voltar ao site</a>
+            </p>
+            <p class="text-xs text-gray-400 mt-2">
+                © 2026 CompresemModeracao - Sistema Seguro
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Form submission
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const loginBtn = document.getElementById('loginBtn');
+            const errorMessage = document.getElementById('errorMessage');
+            const successMessage = document.getElementById('successMessage');
+            const errorText = document.getElementById('errorText');
+            
+            // Reset messages
+            errorMessage.classList.add('hidden');
+            successMessage.classList.add('hidden');
+            
+            // Show loading
+            loginBtn.textContent = '⏳ Verificando...';
+            loginBtn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: document.getElementById('email').value,
+                        password: document.getElementById('password').value,
+                        remember: document.getElementById('remember').checked
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    // Success
+                    successMessage.classList.remove('hidden');
+                    loginBtn.textContent = '✅ Logado!';
+                    
+                    // Redirect after 1 second
+                    setTimeout(() => {
+                        window.location.href = '/admin';
+                    }, 1000);
+                    
+                } else {
+                    // Error
+                    errorText.textContent = data.message || 'Credenciais inválidas';
+                    errorMessage.classList.remove('hidden');
+                    
+                    loginBtn.textContent = '🚀 Fazer Login';
+                    loginBtn.disabled = false;
+                }
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                errorText.textContent = 'Erro de conexão. Tente novamente.';
+                errorMessage.classList.remove('hidden');
+                
+                loginBtn.textContent = '🚀 Fazer Login';
+                loginBtn.disabled = false;
+            }
+        });
+        
+        // Enter key support
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,2732 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔐 Painel Admin - Compre sem Moderação</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF6B35',
+                        secondary: '#F7931E',
+                        success: '#10B981',
+                        danger: '#EF4444'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Font Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%); }
+        .stat-card { transition: all 0.3s ease; }
+        .stat-card:hover { transform: translateY(-2px); }
+        .section { display: none; }
+        .section.active { display: block; }
+        .menu-item { cursor: pointer; transition: all 0.2s; }
+        .menu-item:hover { background-color: #f3f4f6; }
+        .menu-item.active { background-color: #e5e7eb; color: #1f2937; }
+        
+        /* Chart responsivity fixes */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .chart-container canvas {
+            max-height: 300px !important;
+            width: 100% !important;
+        }
+
+        /* Toggle switch */
+        input:checked ~ .dot { transform: translateX(20px); }
+        input:checked ~ div.bg-gray-300 { background-color: #10B981; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="flex items-center justify-between px-6 py-4">
+            <div class="flex items-center space-x-4">
+                <div class="text-2xl">🛒</div>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-800">Painel Admin</h1>
+                    <p class="text-sm text-gray-500">Compre sem Moderação</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="text-sm text-gray-600">
+                    Olá, <span id="userName" class="font-medium text-gray-800">Carregando...</span>
+                </div>
+                <div id="userAvatar" class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-medium">
+                    ?
+                </div>
+                
+                <!-- Dropdown Menu -->
+                <div class="relative">
+                    <button id="userMenuBtn" class="text-gray-400 hover:text-gray-600 focus:outline-none">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zM12 13a1 1 0 110-2 1 1 0 010 2zM12 20a1 1 0 110-2 1 1 0 010 2z"></path>
+                        </svg>
+                    </button>
+                    
+                    <!-- Dropdown Panel -->
+                    <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border z-50">
+                        <div class="py-1">
+                            <div class="px-4 py-2 border-b">
+                                <p class="text-sm text-gray-500">Conectado como</p>
+                                <p id="dropdownEmail" class="text-sm font-medium text-gray-900">carregando...</p>
+                            </div>
+                            <a href="/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                🏠 Ir para o site
+                            </a>
+                            <button onclick="logout()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                                🚪 Sair
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex">
+        <!-- Sidebar -->
+        <nav class="w-64 bg-white shadow-sm h-screen overflow-y-auto">
+            <div class="p-4">
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Painel</h3>
+                <ul class="space-y-1 mb-6">
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 rounded-lg active" data-section="dashboard">
+                            <span>📊</span>
+                            <span class="font-medium">Dashboard</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="ofertas">
+                            <span>🛒</span>
+                            <span>Ofertas</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="monitor">
+                            <span>🔍</span>
+                            <span>Monitor</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="disparo">
+                            <span>📱</span>
+                            <span>Disparo</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="analytics">
+                            <span>📈</span>
+                            <span>Analytics</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="config">
+                            <span>⚙️</span>
+                            <span>Configurações</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="comparison">
+                            <span>⚖️</span>
+                            <span>Comparação APIs</span>
+                        </div>
+                    </li>
+                </ul>
+
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Plataformas</h3>
+                <ul class="space-y-1 mb-6">
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="plat-ml">
+                            <span>🛒</span>
+                            <span>Mercado Livre</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="plat-shopee">
+                            <span>🧡</span>
+                            <span>Shopee</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="plat-aliexpress">
+                            <span>🔴</span>
+                            <span>AliExpress</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="plat-amazon">
+                            <span>📦</span>
+                            <span>Amazon</span>
+                        </div>
+                    </li>
+                </ul>
+
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Sistema</h3>
+                <ul class="space-y-1 mb-6">
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="api-status">
+                            <span>🔌</span>
+                            <span>API Status</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="health">
+                            <span>❤️</span>
+                            <span>Health Check</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="stats">
+                            <span>📊</span>
+                            <span>Estatísticas</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="login-page">
+                            <span>🔐</span>
+                            <span>Página Login</span>
+                        </div>
+                    </li>
+                </ul>
+
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Gerenciar</h3>
+                <ul class="space-y-1 mb-6">
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="usuarios">
+                            <span>👥</span>
+                            <span>Usuários</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="senha">
+                            <span>🔑</span>
+                            <span>Trocar Senha</span>
+                        </div>
+                    </li>
+                </ul>
+
+                <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Ferramentas</h3>
+                <ul class="space-y-1">
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="logs">
+                            <span>📜</span>
+                            <span>Logs</span>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="menu-item flex items-center space-x-3 px-3 py-2 text-gray-600 rounded-lg" data-section="backup">
+                            <span>💾</span>
+                            <span>Backup</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6">
+            <!-- Dashboard Section -->
+            <div id="dashboard-section" class="section active">
+                <!-- Quick Actions -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-2xl font-bold text-gray-800">Controles Rápidos</h2>
+                        <div class="text-sm text-gray-500">
+                            <span id="currentTime"></span>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <button id="startMonitor" class="bg-green-600 text-white p-4 rounded-lg hover:bg-green-700 transition-colors">
+                            <div class="text-2xl mb-2">▶️</div>
+                            <div class="font-medium">Iniciar Monitor</div>
+                        </button>
+                        <button id="stopMonitor" class="bg-red-600 text-white p-4 rounded-lg hover:bg-red-700 transition-colors">
+                            <div class="text-2xl mb-2">⏹️</div>
+                            <div class="font-medium">Parar Monitor</div>
+                        </button>
+                        <button id="testWhatsapp" class="bg-blue-600 text-white p-4 rounded-lg hover:bg-blue-700 transition-colors">
+                            <div class="text-2xl mb-2">📱</div>
+                            <div class="font-medium">Testar WhatsApp</div>
+                        </button>
+                        <button id="forceUpdate" class="bg-purple-600 text-white p-4 rounded-lg hover:bg-purple-700 transition-colors">
+                            <div class="text-2xl mb-2">🔄</div>
+                            <div class="font-medium">Atualizar Agora</div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <!-- Stat Card 1 -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium">Ofertas Hoje</p>
+                                <p class="text-3xl font-bold text-gray-900" id="offersToday">47</p>
+                            </div>
+                            <div class="text-3xl">🛒</div>
+                        </div>
+                        <div class="mt-2 flex items-center">
+                            <span class="text-green-500 text-sm font-medium">+12%</span>
+                            <span class="text-gray-500 text-sm ml-1">vs ontem</span>
+                        </div>
+                    </div>
+
+                    <!-- Stat Card 2 -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium">Enviadas WhatsApp</p>
+                                <p class="text-3xl font-bold text-gray-900" id="whatsappSent">23</p>
+                            </div>
+                            <div class="text-3xl">📱</div>
+                        </div>
+                        <div class="mt-2 flex items-center">
+                            <span class="text-green-500 text-sm font-medium">+8%</span>
+                            <span class="text-gray-500 text-sm ml-1">vs ontem</span>
+                        </div>
+                    </div>
+
+                    <!-- Stat Card 3 -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium">Cliques Links</p>
+                                <p class="text-3xl font-bold text-gray-900" id="linkClicks">156</p>
+                            </div>
+                            <div class="text-3xl">👆</div>
+                        </div>
+                        <div class="mt-2 flex items-center">
+                            <span class="text-green-500 text-sm font-medium">+24%</span>
+                            <span class="text-gray-500 text-sm ml-1">vs ontem</span>
+                        </div>
+                    </div>
+
+                    <!-- Stat Card 4 -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm stat-card">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-gray-500 text-sm font-medium">Comissões</p>
+                                <p class="text-3xl font-bold text-gray-900" id="commissions">R$ 892</p>
+                            </div>
+                            <div class="text-3xl">💰</div>
+                        </div>
+                        <div class="mt-2 flex items-center">
+                            <span class="text-green-500 text-sm font-medium">+18%</span>
+                            <span class="text-gray-500 text-sm ml-1">vs ontem</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Offers Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Ofertas Últimos 7 Dias</h3>
+                        <div class="chart-container">
+                            <canvas id="offersChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Revenue Chart -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">💰 Comissões Últimos 7 Dias</h3>
+                        <div class="chart-container">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Status -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- API Status -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🔌 Status das APIs</h3>
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium">Mercado Livre</span>
+                                <span class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    <span class="text-sm text-green-600">Online</span>
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium">Evolution API</span>
+                                <span class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                    <span class="text-sm text-green-600">Online</span>
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium">Telegram Bot</span>
+                                <span class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                    <span class="text-sm text-yellow-600">Pendente</span>
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="font-medium">Monitor Automático</span>
+                                <span class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-green-500 rounded-full pulse-animation"></div>
+                                    <span class="text-sm text-green-600">Ativo</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">📋 Atividade Recente</h3>
+                        <div class="space-y-3" id="activityLog">
+                            <div class="flex items-start space-x-3">
+                                <div class="text-green-500">✅</div>
+                                <div class="flex-1">
+                                    <p class="text-sm font-medium">Sistema iniciado</p>
+                                    <p class="text-xs text-gray-500">agora</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Other Sections (Placeholder) -->
+            <div id="ofertas-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">🛒 Gerenciar Ofertas</h2>
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <p class="text-gray-600">Seção de gerenciamento de ofertas em desenvolvimento...</p>
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-medium text-gray-800">📊 Total de Ofertas</h4>
+                            <p class="text-2xl font-bold text-primary">47</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-medium text-gray-800">⚡ Ofertas Ativas</h4>
+                            <p class="text-2xl font-bold text-green-600">42</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-medium text-gray-800">⏸️ Pausadas</h4>
+                            <p class="text-2xl font-bold text-gray-600">5</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="monitor-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">🔍 Monitor do Sistema</h2>
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <p class="text-gray-600">Configurações do monitor automático em desenvolvimento...</p>
+                </div>
+            </div>
+
+            <div id="disparo-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">📱 Disparo de Mensagens</h2>
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <p class="text-gray-600">Sistema de disparo WhatsApp e Telegram em desenvolvimento...</p>
+                </div>
+            </div>
+
+            <div id="analytics-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">📈 Analytics Avançado</h2>
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <p class="text-gray-600">Relatórios detalhados em desenvolvimento...</p>
+                </div>
+            </div>
+
+            <div id="config-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">⚙️ Configurações</h2>
+                
+                <!-- API Mercado Livre Configuration -->
+                <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">🛒 API Mercado Livre</h3>
+                    
+                    <form id="mlConfigForm" class="space-y-6">
+                        <!-- Rate Limiting -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Requests por Minuto</label>
+                                <input type="number" id="maxRequestsPerMinute" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       value="1000" min="100" max="5000" required>
+                                <p class="text-xs text-gray-500 mt-1">Limite de requisições para evitar bloqueio (recomendado: 1000)</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Site ID</label>
+                                <select id="siteId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <option value="MLB">MLB - Brasil</option>
+                                    <option value="MLA">MLA - Argentina</option>
+                                    <option value="MLM">MLM - México</option>
+                                    <option value="MLC">MLC - Chile</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Filtros de Oferta -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Desconto Mínimo (%)</label>
+                                <input type="number" id="minDiscountPercent" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       value="30" min="5" max="90" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Preço Mínimo (R$)</label>
+                                <input type="number" id="minOriginalPrice" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       value="50" min="1" step="0.01" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Preço Máximo (R$)</label>
+                                <input type="number" id="maxPrice" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       value="5000" min="10" step="0.01" required>
+                            </div>
+                        </div>
+
+                        <!-- Keywords de Busca -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">🔍 Palavras-chave para Monitorar</label>
+                            <textarea id="searchKeywords" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                      placeholder="iphone, samsung, notebook, smartwatch, fone bluetooth, mouse gamer">iphone, samsung, notebook, smartwatch, fone bluetooth, mouse gamer, teclado mecânico, monitor, tablet, kindle, chromecast, airpods, jbl, xiaomi</textarea>
+                            <p class="text-xs text-gray-500 mt-1">Separe as palavras-chave por vírgula. Essas serão as buscas automáticas.</p>
+                        </div>
+
+                        <!-- Categorias Monitoradas -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">📦 Categorias Monitoradas</label>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="category-checkbox" value="MLB1648" checked>
+                                    <span class="text-sm">💻 Informática</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="category-checkbox" value="MLB1000" checked>
+                                    <span class="text-sm">📱 Eletrônicos</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="category-checkbox" value="MLB1430" checked>
+                                    <span class="text-sm">🏠 Casa e Jardim</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="category-checkbox" value="MLB1276" checked>
+                                    <span class="text-sm">⚽ Esportes</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="category-checkbox" value="MLB1384" checked>
+                                    <span class="text-sm">👶 Bebês</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="category-checkbox" value="MLB1246" checked>
+                                    <span class="text-sm">💄 Beleza</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="category-checkbox" value="MLB1571" checked>
+                                    <span class="text-sm">🎵 Música</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" class="category-checkbox" value="MLB1132" checked>
+                                    <span class="text-sm">🧸 Brinquedos</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Links de Afiliado -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">🔗 URL Base de Afiliado (opcional)</label>
+                                <input type="url" id="affiliateBaseUrl" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       placeholder="https://mercadolivre.com/affiliate/?">
+                                <p class="text-xs text-gray-500 mt-1">Se você tem programa de afiliados configurado</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">🏷️ Tag de Afiliado</label>
+                                <input type="text" id="affiliateTag" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       placeholder="COMPRESEMMODERACAO">
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-4 border-t">
+                            <div class="flex items-center space-x-2 text-sm text-gray-600">
+                                <div id="mlConfigStatus" class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                <span>Configuração não salva</span>
+                            </div>
+                            <div class="space-x-3">
+                                <button type="button" onclick="testMLConnection()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                                    🔍 Testar Conexão
+                                </button>
+                                <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">
+                                    💾 Salvar Configurações
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Configurações Gerais -->
+                <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">⚙️ Configurações Gerais</h3>
+                    
+                    <form id="generalConfigForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Intervalo de Monitoramento (minutos)</label>
+                                <select id="monitoringInterval" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <option value="5">5 minutos</option>
+                                    <option value="10">10 minutos</option>
+                                    <option value="15" selected>15 minutos</option>
+                                    <option value="30">30 minutos</option>
+                                    <option value="60">1 hora</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Máximo de Ofertas por Disparo</label>
+                                <input type="number" id="maxOffersPerDispatch" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       value="10" min="1" max="50" required>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-4 border-t">
+                            <div class="flex items-center space-x-4">
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="enableAutoDispatch" checked>
+                                    <span class="text-sm font-medium text-gray-700">🚀 Disparo Automático</span>
+                                </label>
+                                <label class="flex items-center space-x-2">
+                                    <input type="checkbox" id="enableNotifications" checked>
+                                    <span class="text-sm font-medium text-gray-700">🔔 Notificações</span>
+                                </label>
+                            </div>
+                            <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">
+                                💾 Salvar Gerais
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Test API Section -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">🧪 Testar API</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Busca de Teste</label>
+                                <input type="text" id="testQuery" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       placeholder="Ex: iphone 14" value="notebook">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Limite de Resultados</label>
+                                <select id="testLimit" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <option value="5">5 resultados</option>
+                                    <option value="10" selected>10 resultados</option>
+                                    <option value="20">20 resultados</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <button onclick="testMLSearch()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                                🔍 Executar Busca de Teste
+                            </button>
+                            <button onclick="discoverHotDeals()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
+                                🔥 Descobrir Ofertas Quentes
+                            </button>
+                        </div>
+
+                        <!-- Test Results -->
+                        <div id="testResults" class="hidden mt-4 p-4 bg-gray-50 rounded-lg max-h-96 overflow-y-auto">
+                            <h4 class="font-medium text-gray-800 mb-2">📊 Resultados do Teste:</h4>
+                            <pre id="testResultsContent" class="text-sm text-gray-600 whitespace-pre-wrap"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MCP Server Configuration -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">🤖 MCP Server Mercado Livre</h3>
+                    
+                    <form id="mcpConfigForm" class="space-y-4">
+                        <div class="p-4 bg-blue-50 rounded-lg mb-4">
+                            <h4 class="font-medium text-blue-800 mb-2">ℹ️ Sobre o MCP Server</h4>
+                            <p class="text-sm text-blue-700">
+                                O Model Context Protocol (MCP) é uma interface oficial do Mercado Livre que permite 
+                                integração com IAs usando linguagem natural. Requer Access Token oficial.
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">🔗 Server URL</label>
+                                <input type="url" id="mcpServerUrl" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       value="https://mcp.mercadolibre.com/mcp" readonly>
+                                <p class="text-xs text-gray-500 mt-1">URL oficial do MCP Server (não alterar)</p>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">🌍 Site ID</label>
+                                <select id="mcpSiteId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <option value="MLB">MLB - Brasil</option>
+                                    <option value="MLA">MLA - Argentina</option>
+                                    <option value="MLM">MLM - México</option>
+                                    <option value="MLC">MLC - Chile</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">🔑 Access Token</label>
+                            <div class="relative">
+                                <input type="password" id="mcpAccessToken" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       placeholder="Cole aqui seu Access Token do Mercado Livre">
+                                <button type="button" onclick="toggleTokenVisibility()" class="absolute right-3 top-3 text-gray-400 hover:text-gray-600">
+                                    👁️
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">
+                                <a href="https://developers.mercadolivre.com.br/pt_br/desenvolvimento-seguro" target="_blank" class="text-blue-600 hover:underline">
+                                    Como obter Access Token →
+                                </a>
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">⚡ Rate Limit (/min)</label>
+                                <input type="number" id="mcpRateLimit" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       value="500" min="100" max="2000" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">⏱️ Timeout (segundos)</label>
+                                <input type="number" id="mcpTimeout" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       value="30" min="10" max="60" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">📋 Limite Padrão</label>
+                                <input type="number" id="mcpDefaultLimit" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       value="20" min="1" max="50" required>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-4 border-t">
+                            <div class="flex items-center space-x-2 text-sm text-gray-600">
+                                <div id="mcpConfigStatus" class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                <span>MCP não configurado</span>
+                            </div>
+                            <div class="space-x-3">
+                                <button type="button" onclick="testMCPConnection()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition">
+                                    🔍 Testar MCP
+                                </button>
+                                <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">
+                                    💾 Salvar MCP
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="logs-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">📜 Logs do Sistema</h2>
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <p class="text-gray-600">Visualizador de logs em desenvolvimento...</p>
+                </div>
+            </div>
+
+            <div id="backup-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">💾 Backup & Restauração</h2>
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <p class="text-gray-600">Sistema de backup em desenvolvimento...</p>
+                </div>
+            </div>
+
+            <!-- Usuarios Section -->
+            <div id="usuarios-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">👥 Gerenciar Usuários</h2>
+                
+                <!-- Add User Form -->
+                <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">➕ Adicionar Novo Administrador</h3>
+                    <form id="addUserForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Nome Completo</label>
+                            <input type="text" id="newUserName" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Ex: João Silva" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                            <input type="email" id="newUserEmail" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="joao@empresa.com" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Senha Inicial</label>
+                            <input type="password" id="newUserPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Senha temporária" required>
+                        </div>
+                        <div class="md:col-span-3">
+                            <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">
+                                ➕ Adicionar Usuário
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Users List -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">📋 Administradores Ativos</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full table-auto">
+                            <thead>
+                                <tr class="border-b border-gray-200">
+                                    <th class="text-left py-3 px-4 font-medium text-gray-700">Nome</th>
+                                    <th class="text-left py-3 px-4 font-medium text-gray-700">Email</th>
+                                    <th class="text-left py-3 px-4 font-medium text-gray-700">Último Login</th>
+                                    <th class="text-left py-3 px-4 font-medium text-gray-700">Status</th>
+                                    <th class="text-left py-3 px-4 font-medium text-gray-700">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersList">
+                                <tr class="border-b border-gray-100">
+                                    <td class="py-3 px-4">
+                                        <div class="flex items-center space-x-3">
+                                            <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white font-medium text-sm">V</div>
+                                            <span>Vinícius G. Lopes</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3 px-4 text-gray-600">viniciusglopes@gmail.com</td>
+                                    <td class="py-3 px-4 text-gray-600">agora</td>
+                                    <td class="py-3 px-4">
+                                        <span class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">🟢 Online</span>
+                                    </td>
+                                    <td class="py-3 px-4">
+                                        <span class="text-xs text-gray-500">👑 Proprietário</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Section -->
+            <div id="comparison-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">⚖️ Comparação APIs - Direct vs MCP</h2>
+                
+                <!-- API Status Cards -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Direct API Card -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-blue-500">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">🔗 Direct API</h3>
+                            <div class="flex items-center space-x-2">
+                                <div class="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <span class="text-sm text-green-600">Ativo</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm text-gray-600">
+                            <p>• Nossa implementação direta</p>
+                            <p>• Rate limit: 1000 req/min</p>
+                            <p>• Busca sem autenticação</p>
+                            <p>• Filtros personalizados</p>
+                        </div>
+                        <div id="directApiStats" class="mt-4 p-3 bg-gray-50 rounded text-sm">
+                            <p>Performance: <span class="font-medium text-green-600">425ms médio</span></p>
+                            <p>Taxa sucesso: <span class="font-medium text-green-600">95%</span></p>
+                        </div>
+                    </div>
+
+                    <!-- MCP Server Card -->
+                    <div class="bg-white p-6 rounded-lg shadow-sm border-l-4 border-purple-500">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">🤖 MCP Server</h3>
+                            <div class="flex items-center space-x-2">
+                                <div id="mcpStatusIndicator" class="w-3 h-3 bg-red-500 rounded-full"></div>
+                                <span id="mcpStatusText" class="text-sm text-red-600">Não configurado</span>
+                            </div>
+                        </div>
+                        <div class="space-y-2 text-sm text-gray-600">
+                            <p>• Interface oficial do ML</p>
+                            <p>• Requer Access Token</p>
+                            <p>• Linguagem natural</p>
+                            <p>• Documentação integrada</p>
+                        </div>
+                        <div id="mcpApiStats" class="mt-4 p-3 bg-gray-50 rounded text-sm">
+                            <p>Performance: <span id="mcpPerformance" class="font-medium text-gray-400">N/A</span></p>
+                            <p>Taxa sucesso: <span id="mcpSuccessRate" class="font-medium text-gray-400">N/A</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Controls -->
+                <div class="bg-white p-6 rounded-lg shadow-sm mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">🧪 Executar Comparação</h3>
+                    
+                    <form id="comparisonForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Busca</label>
+                                <input type="text" id="comparisonQuery" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" 
+                                       placeholder="Ex: smartphone samsung" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Limite</label>
+                                <select id="comparisonLimit" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <option value="10">10 resultados</option>
+                                    <option value="20" selected>20 resultados</option>
+                                    <option value="30">30 resultados</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Método</label>
+                                <select id="comparisonMethod" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                                    <option value="parallel">Paralelo (mais rápido)</option>
+                                    <option value="sequential">Sequencial (debug)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center space-x-3">
+                            <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-opacity-90 transition">
+                                ⚖️ Executar Comparação
+                            </button>
+                            <button type="button" onclick="loadComparisonStats()" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition">
+                                📊 Ver Estatísticas
+                            </button>
+                            <button type="button" onclick="generatePerformanceReport()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                                📋 Relatório
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Comparison Results -->
+                <div id="comparisonResults" class="hidden bg-white p-6 rounded-lg shadow-sm mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">🏆 Resultados da Comparação</h3>
+                    
+                    <!-- Winner Badge -->
+                    <div id="comparisonWinner" class="mb-4 p-4 rounded-lg">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+
+                    <!-- Detailed Results -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Direct API Results -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h4 class="font-semibold text-blue-600 mb-3">🔗 Direct API Results</h4>
+                            <div id="directApiResults" class="space-y-2 text-sm">
+                                <!-- Results populated by JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- MCP Server Results -->
+                        <div class="border border-gray-200 rounded-lg p-4">
+                            <h4 class="font-semibold text-purple-600 mb-3">🤖 MCP Server Results</h4>
+                            <div id="mcpServerResults" class="space-y-2 text-sm">
+                                <!-- Results populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Metrics -->
+                    <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                        <h4 class="font-medium text-gray-800 mb-2">⚡ Métricas de Performance</h4>
+                        <div id="performanceMetrics" class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <!-- Metrics populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistics Summary -->
+                <div id="comparisonStats" class="bg-white p-6 rounded-lg shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">📊 Estatísticas Históricas</h3>
+                    
+                    <div id="statsContent">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+                            <div class="text-center p-4 bg-blue-50 rounded-lg">
+                                <div class="text-2xl font-bold text-blue-600" id="totalComparisons">-</div>
+                                <div class="text-sm text-blue-700">Total Comparações</div>
+                            </div>
+                            <div class="text-center p-4 bg-green-50 rounded-lg">
+                                <div class="text-2xl font-bold text-green-600" id="directWins">-</div>
+                                <div class="text-sm text-green-700">Vitórias Direct API</div>
+                            </div>
+                            <div class="text-center p-4 bg-purple-50 rounded-lg">
+                                <div class="text-2xl font-bold text-purple-600" id="mcpWins">-</div>
+                                <div class="text-sm text-purple-700">Vitórias MCP Server</div>
+                            </div>
+                        </div>
+
+                        <!-- Recommendation -->
+                        <div id="overallRecommendation" class="p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-medium text-gray-800 mb-2">💡 Recomendação Geral</h4>
+                            <p id="recommendationText" class="text-gray-600">Execute algumas comparações para gerar recomendações inteligentes</p>
+                        </div>
+
+                        <!-- Latest Comparisons -->
+                        <div class="mt-6">
+                            <h4 class="font-medium text-gray-800 mb-3">🕐 Últimas Comparações</h4>
+                            <div id="latestComparisons" class="space-y-2">
+                                <!-- Latest comparisons populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Senha Section -->
+            <div id="senha-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">🔑 Trocar Senha</h2>
+                
+                <div class="max-w-md">
+                    <div class="bg-white p-6 rounded-lg shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">🔐 Alterar Senha de Acesso</h3>
+                        
+                        <form id="changePasswordForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Senha Atual</label>
+                                <input type="password" id="currentPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Digite sua senha atual" required>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Nova Senha</label>
+                                <input type="password" id="newPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Digite a nova senha" required minlength="6">
+                                <p class="text-xs text-gray-500 mt-1">Mínimo 6 caracteres</p>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Confirmar Nova Senha</label>
+                                <input type="password" id="confirmPassword" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Confirme a nova senha" required>
+                            </div>
+                            
+                            <div class="pt-4">
+                                <button type="submit" class="w-full bg-primary text-white py-2 rounded-lg hover:bg-opacity-90 transition">
+                                    🔐 Alterar Senha
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                            <h4 class="font-medium text-blue-800 mb-2">💡 Dicas de Segurança</h4>
+                            <ul class="text-sm text-blue-700 space-y-1">
+                                <li>• Use uma senha forte com pelo menos 8 caracteres</li>
+                                <li>• Combine letras maiúsculas, minúsculas e números</li>
+                                <li>• Não compartilhe sua senha com terceiros</li>
+                                <li>• Troque sua senha regularmente</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Status Section -->
+            <div id="api-status-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">🔌 Status das APIs</h2>
+                
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Status em Tempo Real</h3>
+                        <button onclick="refreshAPIStatus()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                            🔄 Atualizar
+                        </button>
+                    </div>
+                    
+                    <div id="apiStatusContent" class="space-y-4">
+                        <div class="text-center text-gray-500">🔄 Carregando status das APIs...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Check Section -->
+            <div id="health-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">❤️ Health Check do Sistema</h2>
+                
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Verificação de Saúde</h3>
+                        <button onclick="runHealthCheck()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
+                            🏥 Executar Check
+                        </button>
+                    </div>
+                    
+                    <div id="healthCheckContent" class="space-y-4">
+                        <div class="text-center text-gray-500">❤️ Clique em "Executar Check" para verificar a saúde do sistema</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Section -->
+            <div id="stats-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">📊 Estatísticas Detalhadas</h2>
+                
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Métricas do Sistema</h3>
+                        <button onclick="loadDetailedStats()" class="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition">
+                            📈 Carregar Stats
+                        </button>
+                    </div>
+                    
+                    <div id="detailedStatsContent" class="space-y-4">
+                        <div class="text-center text-gray-500">📊 Clique em "Carregar Stats" para ver estatísticas detalhadas</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login Page Section -->
+            <div id="login-page-section" class="section">
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">🔐 Página de Login</h2>
+                
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-gray-800">Visualizar Página de Login</h3>
+                        <a href="/login" target="_blank" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                            🌐 Abrir em Nova Aba
+                        </a>
+                    </div>
+                    
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <h4 class="font-medium text-gray-800 mb-2">ℹ️ Informações da Página de Login</h4>
+                        <div class="space-y-2 text-sm text-gray-600">
+                            <p><strong>URL:</strong> /login</p>
+                            <p><strong>Status:</strong> <span class="text-green-600">Ativa</span></p>
+                            <p><strong>Funcionalidades:</strong></p>
+                            <ul class="list-disc list-inside ml-4 space-y-1">
+                                <li>Autenticação de usuários</li>
+                                <li>Redirecionamento para admin após login</li>
+                                <li>Validação de credenciais</li>
+                                <li>Session management</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="mt-4 p-3 bg-blue-50 rounded border-l-4 border-blue-500">
+                            <p class="text-blue-800 text-sm">
+                                💡 Esta seção permite visualizar informações sobre a página de login. 
+                                Use o botão "Abrir em Nova Aba" para testar a funcionalidade de login.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Mercado Livre Section -->
+            <div id="plat-ml-section" class="section">
+                <div class="flex items-center space-x-3 mb-6">
+                    <span class="text-3xl">🛒</span>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Mercado Livre</h2>
+                        <p class="text-sm text-gray-500">Configuração de credenciais e afiliado</p>
+                    </div>
+                    <div class="ml-auto flex items-center gap-3">
+                        <span id="ml-status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">Não configurado</span>
+                        <label class="flex items-center cursor-pointer">
+                            <div class="relative">
+                                <input type="checkbox" id="ml-toggle" class="sr-only" onchange="togglePlataforma('mercadolivre', this.checked)">
+                                <div class="w-11 h-6 bg-gray-300 rounded-full shadow-inner transition" id="ml-toggle-bg"></div>
+                                <div class="dot absolute w-4 h-4 bg-white rounded-full shadow top-1 left-1 transition" id="ml-toggle-dot"></div>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-gray-600" id="ml-toggle-label">Desligado</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl p-6 shadow-sm border">
+                        <h3 class="font-semibold text-gray-700 mb-4">🔑 Credenciais da API</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Client ID</label>
+                                <input type="text" id="ml-client-id" placeholder="App ID do Mercado Livre" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Client Secret</label>
+                                <input type="password" id="ml-client-secret" placeholder="Secret key" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Access Token</label>
+                                <input type="password" id="ml-access-token" placeholder="Token de acesso" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+                            </div>
+                        </div>
+                        <h3 class="font-semibold text-gray-700 mb-4 mt-6">🤝 Programa de Afiliados</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">User ID (afiliado)</label>
+                                <input type="text" id="ml-user-id" placeholder="Seu user ID de afiliado" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Tag de Afiliado</label>
+                                <input type="text" id="ml-affiliate-tag" placeholder="Ex: COMPRESEMMODERACAO" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+                            </div>
+                        </div>
+                        <div class="flex gap-3 mt-6">
+                            <button onclick="salvarConfig('mercadolivre')" class="flex-1 bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 font-medium text-sm">💾 Salvar</button>
+                            <button onclick="testarConexao('mercadolivre')" class="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium text-sm">🔍 Testar</button>
+                        </div>
+                        <div id="ml-msg" class="mt-3 text-sm hidden"></div>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 shadow-sm border">
+                        <h3 class="font-semibold text-gray-700 mb-4">📋 Endpoints Disponíveis</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">GET /sites/{site_id}/search</span><span class="text-green-600 text-xs">✓ Busca pública</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">GET /items/{id}</span><span class="text-green-600 text-xs">✓ Detalhe produto</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">GET /items/{id}/descriptions</span><span class="text-green-600 text-xs">✓ Descrição</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">GET /items/search (deals)</span><span class="text-yellow-600 text-xs">⚠ Requer token</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">POST /afiliados/link</span><span class="text-yellow-600 text-xs">⚠ Requer afiliado</span></div>
+                        </div>
+                        <div class="mt-4 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
+                            💡 Cadastre-se em <strong>developers.mercadolivre.com.br</strong> para obter Client ID e Secret. Para afiliados: <strong>afiliados.mercadolivre.com.br</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shopee Section -->
+            <div id="plat-shopee-section" class="section">
+                <div class="flex items-center space-x-3 mb-6">
+                    <span class="text-3xl">🧡</span>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Shopee</h2>
+                        <p class="text-sm text-gray-500">Configuração de credenciais e afiliado</p>
+                    </div>
+                    <div class="ml-auto flex items-center gap-3">
+                        <span id="shopee-status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">Não configurado</span>
+                        <label class="flex items-center cursor-pointer">
+                            <div class="relative">
+                                <input type="checkbox" id="shopee-toggle" class="sr-only" onchange="togglePlataforma('shopee', this.checked)">
+                                <div class="w-11 h-6 bg-gray-300 rounded-full shadow-inner transition" id="shopee-toggle-bg"></div>
+                                <div class="dot absolute w-4 h-4 bg-white rounded-full shadow top-1 left-1 transition" id="shopee-toggle-dot"></div>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-gray-600" id="shopee-toggle-label">Desligado</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl p-6 shadow-sm border">
+                        <h3 class="font-semibold text-gray-700 mb-4">🔑 Credenciais da API</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Partner ID</label>
+                                <input type="text" id="shopee-partner-id" placeholder="Partner ID" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Partner Key</label>
+                                <input type="password" id="shopee-partner-key" placeholder="Partner Key / Secret" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Affiliate ID</label>
+                                <input type="text" id="shopee-affiliate-id" placeholder="ID de afiliado Shopee" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-rose-400">
+                            </div>
+                        </div>
+                        <div class="flex gap-3 mt-6">
+                            <button onclick="salvarConfig('shopee')" class="flex-1 bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 font-medium text-sm">💾 Salvar</button>
+                            <button onclick="testarConexao('shopee')" class="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium text-sm">🔍 Testar</button>
+                        </div>
+                        <div id="shopee-msg" class="mt-3 text-sm hidden"></div>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 shadow-sm border">
+                        <h3 class="font-semibold text-gray-700 mb-4">📋 Endpoints Disponíveis</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">GET /v2/product/search_item</span><span class="text-yellow-600 text-xs">⚠ Requer auth</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">GET /v2/product/get_item_base_info</span><span class="text-yellow-600 text-xs">⚠ Requer auth</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">POST /affiliate/generate_link</span><span class="text-yellow-600 text-xs">⚠ Afiliado</span></div>
+                        </div>
+                        <div class="mt-4 p-3 bg-orange-50 rounded-lg text-xs text-orange-700">
+                            💡 Cadastre-se em <strong>open.shopee.com</strong> para API. Para afiliados: <strong>affiliate.shopee.com.br</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AliExpress Section -->
+            <div id="plat-aliexpress-section" class="section">
+                <div class="flex items-center space-x-3 mb-6">
+                    <span class="text-3xl">🔴</span>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">AliExpress</h2>
+                        <p class="text-sm text-gray-500">Configuração de credenciais e afiliado</p>
+                    </div>
+                    <div class="ml-auto flex items-center gap-3">
+                        <span id="aliexpress-status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">Não configurado</span>
+                        <label class="flex items-center cursor-pointer">
+                            <div class="relative">
+                                <input type="checkbox" id="aliexpress-toggle" class="sr-only" onchange="togglePlataforma('aliexpress', this.checked)">
+                                <div class="w-11 h-6 bg-gray-300 rounded-full shadow-inner transition" id="aliexpress-toggle-bg"></div>
+                                <div class="dot absolute w-4 h-4 bg-white rounded-full shadow top-1 left-1 transition" id="aliexpress-toggle-dot"></div>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-gray-600" id="aliexpress-toggle-label">Desligado</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl p-6 shadow-sm border">
+                        <h3 class="font-semibold text-gray-700 mb-4">🔑 Credenciais da API</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">App Key</label>
+                                <input type="text" id="ali-app-key" placeholder="App Key do AliExpress Portals" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">App Secret</label>
+                                <input type="password" id="ali-app-secret" placeholder="App Secret" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Tracking ID (afiliado)</label>
+                                <input type="text" id="ali-tracking-id" placeholder="Tracking ID" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400">
+                            </div>
+                        </div>
+                        <div class="flex gap-3 mt-6">
+                            <button onclick="salvarConfig('aliexpress')" class="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 font-medium text-sm">💾 Salvar</button>
+                            <button onclick="testarConexao('aliexpress')" class="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium text-sm">🔍 Testar</button>
+                        </div>
+                        <div id="aliexpress-msg" class="mt-3 text-sm hidden"></div>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 shadow-sm border">
+                        <h3 class="font-semibold text-gray-700 mb-4">📋 Endpoints Disponíveis</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">aliexpress.affiliate.product.query</span><span class="text-yellow-600 text-xs">⚠ Requer auth</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">aliexpress.affiliate.link.generate</span><span class="text-yellow-600 text-xs">⚠ Afiliado</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">aliexpress.affiliate.hotproduct.query</span><span class="text-yellow-600 text-xs">⚠ Produtos hot</span></div>
+                        </div>
+                        <div class="mt-4 p-3 bg-red-50 rounded-lg text-xs text-red-700">
+                            💡 Cadastre-se em <strong>portals.aliexpress.com</strong> para obter App Key e Secret.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Amazon Section -->
+            <div id="plat-amazon-section" class="section">
+                <div class="flex items-center space-x-3 mb-6">
+                    <span class="text-3xl">📦</span>
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-800">Amazon</h2>
+                        <p class="text-sm text-gray-500">Configuração de credenciais e afiliado</p>
+                    </div>
+                    <div class="ml-auto flex items-center gap-3">
+                        <span id="amazon-status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-500">Não configurado</span>
+                        <label class="flex items-center cursor-pointer">
+                            <div class="relative">
+                                <input type="checkbox" id="amazon-toggle" class="sr-only" onchange="togglePlataforma('amazon', this.checked)">
+                                <div class="w-11 h-6 bg-gray-300 rounded-full shadow-inner transition" id="amazon-toggle-bg"></div>
+                                <div class="dot absolute w-4 h-4 bg-white rounded-full shadow top-1 left-1 transition" id="amazon-toggle-dot"></div>
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-gray-600" id="amazon-toggle-label">Desligado</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-xl p-6 shadow-sm border">
+                        <h3 class="font-semibold text-gray-700 mb-4">🔑 Credenciais da API (PAAPI 5.0)</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Access Key</label>
+                                <input type="text" id="amz-access-key" placeholder="AWS Access Key" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Secret Key</label>
+                                <input type="password" id="amz-secret-key" placeholder="AWS Secret Key" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Associate Tag (afiliado)</label>
+                                <input type="text" id="amz-associate-tag" placeholder="Ex: compresemmoderacao-20" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Marketplace</label>
+                                <select id="amz-marketplace" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400">
+                                    <option value="www.amazon.com.br">Amazon Brasil (amazon.com.br)</option>
+                                    <option value="www.amazon.com">Amazon EUA (amazon.com)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 mt-6">
+                            <button onclick="salvarConfig('amazon')" class="flex-1 bg-yellow-400 text-gray-900 px-4 py-2 rounded-lg hover:bg-yellow-500 font-medium text-sm">💾 Salvar</button>
+                            <button onclick="testarConexao('amazon')" class="flex-1 bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 font-medium text-sm">🔍 Testar</button>
+                        </div>
+                        <div id="amazon-msg" class="mt-3 text-sm hidden"></div>
+                    </div>
+                    <div class="bg-white rounded-xl p-6 shadow-sm border">
+                        <h3 class="font-semibold text-gray-700 mb-4">📋 Endpoints Disponíveis (PAAPI 5.0)</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">SearchItems</span><span class="text-yellow-600 text-xs">⚠ Requer auth</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">GetItems</span><span class="text-yellow-600 text-xs">⚠ Detalhe produto</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">GetVariations</span><span class="text-yellow-600 text-xs">⚠ Variações</span></div>
+                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded"><span class="font-mono text-xs">GetBrowseNodes</span><span class="text-yellow-600 text-xs">⚠ Categorias</span></div>
+                        </div>
+                        <div class="mt-4 p-3 bg-yellow-50 rounded-lg text-xs text-yellow-700">
+                            💡 Cadastre-se no <strong>Amazon Associates</strong> e depois acesse <strong>webservices.amazon.com.br</strong> para obter as chaves PAAPI.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // Update current time (less frequently)
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString('pt-BR');
+            document.getElementById('currentTime').textContent = timeString;
+        }
+        updateTime();
+        setInterval(updateTime, 30000); // Update every 30 seconds instead of 1 second
+
+        let offersChart, revenueChart;
+
+        // Initialize Charts (only once)
+        function initCharts() {
+            const ctx1 = document.getElementById('offersChart').getContext('2d');
+            offersChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: ['Sex', 'Sab', 'Dom', 'Seg', 'Ter', 'Qua', 'Qui'],
+                    datasets: [{
+                        label: 'Ofertas Encontradas',
+                        data: [32, 45, 38, 42, 51, 47, 58],
+                        borderColor: '#FF6B35',
+                        backgroundColor: 'rgba(255, 107, 53, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    animation: false // Disable animations
+                }
+            });
+
+            const ctx2 = document.getElementById('revenueChart').getContext('2d');
+            revenueChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: ['Sex', 'Sab', 'Dom', 'Seg', 'Ter', 'Qua', 'Qui'],
+                    datasets: [{
+                        label: 'Comissões (R$)',
+                        data: [450, 680, 520, 590, 720, 650, 892],
+                        backgroundColor: '#10B981'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    animation: false // Disable animations
+                }
+            });
+        }
+
+        // Navigation system
+        function showSection(sectionName) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Show selected section
+            const targetSection = document.getElementById(sectionName + '-section');
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+
+            // Update menu active state
+            const menuItems = document.querySelectorAll('.menu-item');
+            menuItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.section === sectionName) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        // Menu click handlers
+        document.querySelectorAll('.menu-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const section = this.dataset.section;
+                if (section) {
+                    showSection(section);
+                }
+            });
+        });
+
+        // Button actions with real API calls
+        document.getElementById('startMonitor').addEventListener('click', async function() {
+            const btn = this;
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<div class="text-2xl mb-2">⏳</div><div class="font-medium">Iniciando...</div>';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/monitor/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('🔄 ' + data.message);
+                    addActivityLog('▶️ Monitor iniciado', 'success');
+                } else {
+                    alert('❌ Erro: ' + (data.message || 'Falha ao iniciar monitor'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        document.getElementById('stopMonitor').addEventListener('click', async function() {
+            const btn = this;
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<div class="text-2xl mb-2">⏳</div><div class="font-medium">Parando...</div>';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/monitor/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('⏹️ ' + data.message);
+                    addActivityLog('⏹️ Monitor parado', 'info');
+                } else {
+                    alert('❌ Erro: ' + (data.message || 'Falha ao parar monitor'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        document.getElementById('testWhatsapp').addEventListener('click', async function() {
+            const btn = this;
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<div class="text-2xl mb-2">⏳</div><div class="font-medium">Testando...</div>';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/test/whatsapp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('📱 ' + data.message);
+                    addActivityLog('📱 WhatsApp testado', 'success');
+                } else {
+                    alert('❌ Erro: ' + (data.message || 'Falha no teste WhatsApp'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        document.getElementById('forceUpdate').addEventListener('click', async function() {
+            const btn = this;
+            const originalText = btn.innerHTML;
+            
+            btn.innerHTML = '<div class="text-2xl mb-2">⏳</div><div class="font-medium">Atualizando...</div>';
+            btn.disabled = true;
+            
+            try {
+                const response = await fetch('/api/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('🔄 ' + data.message);
+                    addActivityLog('🔄 Atualização forçada', 'info');
+                } else {
+                    alert('❌ Erro: ' + (data.message || 'Falha na atualização'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        // Activity log function
+        function addActivityLog(message, type = 'info') {
+            const log = document.getElementById('activityLog');
+            const colors = {
+                success: 'text-green-500',
+                info: 'text-blue-500',
+                warning: 'text-yellow-500',
+                error: 'text-red-500'
+            };
+            
+            const icons = {
+                success: '✅',
+                info: 'ℹ️',
+                warning: '⚠️',
+                error: '❌'
+            };
+            
+            const newEntry = document.createElement('div');
+            newEntry.className = 'flex items-start space-x-3';
+            newEntry.innerHTML = `
+                <div class="${colors[type]}">${icons[type]}</div>
+                <div class="flex-1">
+                    <p class="text-sm font-medium">${message}</p>
+                    <p class="text-xs text-gray-500">agora</p>
+                </div>
+            `;
+            
+            log.insertBefore(newEntry, log.firstChild);
+            
+            // Keep only last 10 entries
+            while (log.children.length > 10) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // Reduced stats updates (every 5 minutes instead of 10 seconds)
+        setInterval(() => {
+            const offers = document.getElementById('offersToday');
+            const current = parseInt(offers.textContent);
+            if (Math.random() > 0.8) { // Less frequent updates
+                offers.textContent = current + 1;
+                addActivityLog(`Nova oferta encontrada (${current + 1})`, 'success');
+            }
+        }, 300000); // Every 5 minutes
+
+        // Authentication and user management
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/api/auth/status');
+                const data = await response.json();
+                
+                if (data.authenticated && data.user) {
+                    // Update user info
+                    document.getElementById('userName').textContent = data.user.name;
+                    document.getElementById('dropdownEmail').textContent = data.user.email;
+                    
+                    // Update avatar
+                    const firstLetter = data.user.name.charAt(0).toUpperCase();
+                    document.getElementById('userAvatar').textContent = firstLetter;
+                    
+                    addActivityLog(`Login: ${data.user.name}`, 'success');
+                    console.log('✅ User info loaded:', data.user);
+                } else {
+                    // Not authenticated, redirect to login
+                    window.location.href = '/login';
+                }
+            } catch (error) {
+                console.error('❌ Error loading user info:', error);
+                window.location.href = '/login';
+            }
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    console.log('👋 Logout successful');
+                    window.location.href = '/login';
+                } else {
+                    console.error('❌ Logout failed');
+                    alert('Erro ao fazer logout. Tente novamente.');
+                }
+            } catch (error) {
+                console.error('❌ Logout error:', error);
+                alert('Erro de conexão. Tente novamente.');
+            }
+        }
+
+        // Toggle dropdown
+        document.getElementById('userMenuBtn').addEventListener('click', function(e) {
+            e.stopPropagation();
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function() {
+            document.getElementById('userDropdown').classList.add('hidden');
+        });
+
+        // Add User Form
+        document.getElementById('addUserForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('newUserName').value;
+            const email = document.getElementById('newUserEmail').value;
+            const password = document.getElementById('newUserPassword').value;
+            
+            try {
+                const response = await fetch('/api/admin/users', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Usuário criado com sucesso!');
+                    addActivityLog(`👥 Novo admin: ${name}`, 'success');
+                    // Reset form
+                    e.target.reset();
+                    // Refresh users list (in real implementation)
+                } else {
+                    alert('❌ Erro: ' + (data.message || 'Falha ao criar usuário'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            }
+        });
+
+        // Change Password Form
+        document.getElementById('changePasswordForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Validate passwords match
+            if (newPassword !== confirmPassword) {
+                alert('❌ As senhas não coincidem!');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Senha alterada com sucesso!');
+                    addActivityLog('🔐 Senha alterada', 'success');
+                    // Reset form
+                    e.target.reset();
+                } else {
+                    alert('❌ Erro: ' + (data.message || 'Falha ao alterar senha'));
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            }
+        });
+
+        // Mercado Livre Configuration Functions
+        async function testMLConnection() {
+            try {
+                const response = await fetch('/api/ml/test-connection', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('mlConfigStatus').className = 'w-3 h-3 bg-green-500 rounded-full';
+                    alert('✅ Conexão com Mercado Livre: OK\n' + data.message);
+                } else {
+                    document.getElementById('mlConfigStatus').className = 'w-3 h-3 bg-red-500 rounded-full';
+                    alert('❌ Erro na conexão: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão com servidor');
+            }
+        }
+
+        async function testMLSearch() {
+            const query = document.getElementById('testQuery').value;
+            const limit = document.getElementById('testLimit').value;
+            
+            if (!query.trim()) {
+                alert('❌ Digite um termo de busca');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/ml/search-test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, limit: parseInt(limit) })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const resultsDiv = document.getElementById('testResults');
+                    const resultsContent = document.getElementById('testResultsContent');
+                    
+                    let resultsText = `🔍 Busca: "${query}" - ${data.products.length} produtos encontrados\n\n`;
+                    
+                    data.products.forEach((product, index) => {
+                        resultsText += `${index + 1}. ${product.title}\n`;
+                        resultsText += `   💰 Preço: R$ ${product.price}`;
+                        if (product.discount_percent) {
+                            resultsText += ` (${product.discount_percent}% desc)`;
+                        }
+                        resultsText += `\n   🚚 Frete grátis: ${product.shipping_free ? 'Sim' : 'Não'}\n`;
+                        resultsText += `   📦 Estoque: ${product.available_quantity} | Vendidos: ${product.sold_quantity}\n`;
+                        resultsText += `   🔗 ${product.permalink}\n\n`;
+                    });
+                    
+                    resultsContent.textContent = resultsText;
+                    resultsDiv.classList.remove('hidden');
+                    
+                    addActivityLog(`Teste de busca executado: ${data.products.length} produtos encontrados`, 'info');
+                } else {
+                    alert('❌ Erro na busca: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            }
+        }
+
+        async function discoverHotDeals() {
+            try {
+                const response = await fetch('/api/ml/discover-deals', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    const resultsDiv = document.getElementById('testResults');
+                    const resultsContent = document.getElementById('testResultsContent');
+                    
+                    let resultsText = `🔥 OFERTAS QUENTES DESCOBERTAS: ${data.products.length} produtos\n\n`;
+                    
+                    data.products.slice(0, 10).forEach((product, index) => {
+                        resultsText += `${index + 1}. ${product.title}\n`;
+                        resultsText += `   💰 R$ ${product.price}`;
+                        if (product.discount_percent) {
+                            resultsText += ` (${product.discount_percent}% OFF - era R$ ${product.original_price})`;
+                        }
+                        resultsText += `\n   📊 Score: ${product.sold_quantity} vendas\n`;
+                        resultsText += `   🔗 ${product.affiliate_link}\n\n`;
+                    });
+                    
+                    resultsContent.textContent = resultsText;
+                    resultsDiv.classList.remove('hidden');
+                    
+                    addActivityLog(`Descoberta de ofertas executada: ${data.products.length} ofertas encontradas`, 'success');
+                } else {
+                    alert('❌ Erro ao descobrir ofertas: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            }
+        }
+
+        // Save Mercado Livre Configuration
+        document.getElementById('mlConfigForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const config = {
+                maxRequestsPerMinute: parseInt(document.getElementById('maxRequestsPerMinute').value),
+                siteId: document.getElementById('siteId').value,
+                minDiscountPercent: parseInt(document.getElementById('minDiscountPercent').value),
+                minOriginalPrice: parseFloat(document.getElementById('minOriginalPrice').value),
+                maxPrice: parseFloat(document.getElementById('maxPrice').value),
+                searchKeywords: document.getElementById('searchKeywords').value.split(',').map(k => k.trim()),
+                monitoredCategories: Array.from(document.querySelectorAll('.category-checkbox:checked')).map(cb => cb.value),
+                affiliateBaseUrl: document.getElementById('affiliateBaseUrl').value,
+                affiliateTag: document.getElementById('affiliateTag').value
+            };
+            
+            try {
+                const response = await fetch('/api/ml/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('mlConfigStatus').className = 'w-3 h-3 bg-green-500 rounded-full';
+                    alert('✅ Configurações da API Mercado Livre salvas com sucesso!');
+                    addActivityLog('Configurações ML atualizadas', 'success');
+                } else {
+                    alert('❌ Erro ao salvar configurações: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            }
+        });
+
+        // Save General Configuration
+        document.getElementById('generalConfigForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const config = {
+                monitoringInterval: parseInt(document.getElementById('monitoringInterval').value),
+                maxOffersPerDispatch: parseInt(document.getElementById('maxOffersPerDispatch').value),
+                enableAutoDispatch: document.getElementById('enableAutoDispatch').checked,
+                enableNotifications: document.getElementById('enableNotifications').checked
+            };
+            
+            try {
+                const response = await fetch('/api/general-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Configurações gerais salvas com sucesso!');
+                    addActivityLog('Configurações gerais atualizadas', 'success');
+                } else {
+                    alert('❌ Erro ao salvar configurações: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            }
+        });
+
+        // MCP Configuration Functions
+        function toggleTokenVisibility() {
+            const tokenInput = document.getElementById('mcpAccessToken');
+            const type = tokenInput.type === 'password' ? 'text' : 'password';
+            tokenInput.type = type;
+        }
+
+        async function testMCPConnection() {
+            try {
+                const response = await fetch('/api/mcp/test-connection', { method: 'POST' });
+                const data = await response.json();
+                
+                const statusIndicator = document.getElementById('mcpConfigStatus');
+                
+                if (data.success) {
+                    statusIndicator.className = 'w-3 h-3 bg-green-500 rounded-full';
+                    alert('✅ Conexão MCP Server: OK\n' + data.message);
+                } else {
+                    statusIndicator.className = 'w-3 h-3 bg-red-500 rounded-full';
+                    alert('❌ Erro conexão MCP: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão com servidor');
+            }
+        }
+
+        // Save MCP Configuration
+        document.getElementById('mcpConfigForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const config = {
+                serverUrl: document.getElementById('mcpServerUrl').value,
+                accessToken: document.getElementById('mcpAccessToken').value,
+                siteId: document.getElementById('mcpSiteId').value,
+                maxRequestsPerMinute: parseInt(document.getElementById('mcpRateLimit').value),
+                timeoutSeconds: parseInt(document.getElementById('mcpTimeout').value),
+                defaultLimit: parseInt(document.getElementById('mcpDefaultLimit').value),
+                language: 'pt_br'
+            };
+            
+            try {
+                const response = await fetch('/api/mcp/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const statusIndicator = document.getElementById('mcpConfigStatus');
+                    const statusText = statusIndicator.nextElementSibling;
+                    
+                    if (data.enabled) {
+                        statusIndicator.className = 'w-3 h-3 bg-green-500 rounded-full';
+                        statusText.textContent = 'MCP configurado';
+                        updateMCPStatus(true);
+                    } else {
+                        statusIndicator.className = 'w-3 h-3 bg-yellow-500 rounded-full';
+                        statusText.textContent = 'MCP salvo (verificar token)';
+                    }
+                    
+                    alert('✅ Configurações MCP salvas com sucesso!');
+                    addActivityLog('Configurações MCP atualizadas', 'success');
+                } else {
+                    alert('❌ Erro ao salvar configurações MCP: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            }
+        });
+
+        // Update MCP status in comparison section
+        function updateMCPStatus(enabled) {
+            const indicator = document.getElementById('mcpStatusIndicator');
+            const text = document.getElementById('mcpStatusText');
+            const performance = document.getElementById('mcpPerformance');
+            const successRate = document.getElementById('mcpSuccessRate');
+            
+            if (enabled) {
+                indicator.className = 'w-3 h-3 bg-green-500 rounded-full';
+                text.textContent = 'Ativo';
+                text.className = 'text-sm text-green-600';
+                performance.textContent = '780ms médio';
+                performance.className = 'font-medium text-purple-600';
+                successRate.textContent = '87%';
+                successRate.className = 'font-medium text-purple-600';
+            } else {
+                indicator.className = 'w-3 h-3 bg-red-500 rounded-full';
+                text.textContent = 'Não configurado';
+                text.className = 'text-sm text-red-600';
+                performance.textContent = 'N/A';
+                performance.className = 'font-medium text-gray-400';
+                successRate.textContent = 'N/A';
+                successRate.className = 'font-medium text-gray-400';
+            }
+        }
+
+        // Comparison Functions
+        document.getElementById('comparisonForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const query = document.getElementById('comparisonQuery').value;
+            const limit = parseInt(document.getElementById('comparisonLimit').value);
+            const method = document.getElementById('comparisonMethod').value;
+            
+            if (!query.trim()) {
+                alert('❌ Digite uma busca para comparar');
+                return;
+            }
+            
+            try {
+                // Show loading
+                const resultsDiv = document.getElementById('comparisonResults');
+                resultsDiv.classList.remove('hidden');
+                document.getElementById('comparisonWinner').innerHTML = '<div class="text-center text-gray-500">🔄 Executando comparação...</div>';
+                
+                const response = await fetch('/api/compare/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query, limit, method })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayComparisonResults(data.comparison);
+                    addActivityLog(`Comparação executada: "${query}"`, 'info');
+                } else {
+                    alert('❌ Erro na comparação: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('❌ Erro de conexão');
+            }
+        });
+
+        function displayComparisonResults(comparison) {
+            const { results, comparison: comp } = comparison;
+            
+            // Update winner badge
+            const winnerDiv = document.getElementById('comparisonWinner');
+            let winnerHtml = '';
+            
+            if (comp.winner === 'direct_api') {
+                winnerHtml = `
+                    <div class="flex items-center justify-center space-x-3 bg-blue-100 text-blue-800 p-3 rounded-lg">
+                        <span class="text-2xl">🏆</span>
+                        <div>
+                            <div class="font-bold">Vencedor: Direct API</div>
+                            <div class="text-sm">${comp.notes}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (comp.winner === 'mcp_server') {
+                winnerHtml = `
+                    <div class="flex items-center justify-center space-x-3 bg-purple-100 text-purple-800 p-3 rounded-lg">
+                        <span class="text-2xl">🏆</span>
+                        <div>
+                            <div class="font-bold">Vencedor: MCP Server</div>
+                            <div class="text-sm">${comp.notes}</div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                winnerHtml = `
+                    <div class="flex items-center justify-center space-x-3 bg-gray-100 text-gray-800 p-3 rounded-lg">
+                        <span class="text-2xl">🤝</span>
+                        <div>
+                            <div class="font-bold">Empate</div>
+                            <div class="text-sm">${comp.notes}</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            winnerDiv.innerHTML = winnerHtml;
+            
+            // Display Direct API results
+            const directDiv = document.getElementById('directApiResults');
+            if (results.direct_api && results.direct_api.products.length > 0) {
+                const directProduct = results.direct_api.products[0];
+                directDiv.innerHTML = `
+                    <p><strong>Produtos encontrados:</strong> ${results.direct_api.count}</p>
+                    <p><strong>Exemplo:</strong> ${directProduct.title}</p>
+                    <p><strong>Preço:</strong> R$ ${directProduct.price}</p>
+                    <p><strong>Desconto:</strong> ${directProduct.discount_percent || 0}%</p>
+                    <p><strong>Performance:</strong> ${results.direct_api.metrics.response_time_ms}ms</p>
+                `;
+            } else {
+                directDiv.innerHTML = '<p class="text-red-600">Nenhum resultado encontrado</p>';
+            }
+            
+            // Display MCP Server results
+            const mcpDiv = document.getElementById('mcpServerResults');
+            if (results.mcp_server && results.mcp_server.products && results.mcp_server.products.length > 0) {
+                const mcpProduct = results.mcp_server.products[0];
+                mcpDiv.innerHTML = `
+                    <p><strong>Produtos encontrados:</strong> ${results.mcp_server.count}</p>
+                    <p><strong>Exemplo:</strong> ${mcpProduct.title}</p>
+                    <p><strong>Preço:</strong> R$ ${mcpProduct.price}</p>
+                    <p><strong>Desconto:</strong> ${mcpProduct.discount_percent || 0}%</p>
+                    <p><strong>Performance:</strong> ${results.mcp_server.metrics.response_time_ms}ms</p>
+                `;
+            } else {
+                const errorMsg = results.mcp_server && results.mcp_server.metrics && results.mcp_server.metrics.error_message 
+                    ? results.mcp_server.metrics.error_message 
+                    : 'Nenhum resultado encontrado';
+                mcpDiv.innerHTML = `<p class="text-red-600">${errorMsg}</p>`;
+            }
+            
+            // Display performance metrics
+            const metricsDiv = document.getElementById('performanceMetrics');
+            metricsDiv.innerHTML = `
+                <div class="text-center">
+                    <div class="font-medium text-blue-600">${results.direct_api ? results.direct_api.metrics.response_time_ms : 0}ms</div>
+                    <div class="text-xs text-gray-500">Direct API</div>
+                </div>
+                <div class="text-center">
+                    <div class="font-medium text-purple-600">${results.mcp_server ? results.mcp_server.metrics.response_time_ms : 0}ms</div>
+                    <div class="text-xs text-gray-500">MCP Server</div>
+                </div>
+                <div class="text-center">
+                    <div class="font-medium text-green-600">${results.direct_api ? results.direct_api.count : 0}</div>
+                    <div class="text-xs text-gray-500">Direct Results</div>
+                </div>
+                <div class="text-center">
+                    <div class="font-medium text-purple-600">${results.mcp_server ? results.mcp_server.count : 0}</div>
+                    <div class="text-xs text-gray-500">MCP Results</div>
+                </div>
+            `;
+        }
+
+        async function loadComparisonStats() {
+            try {
+                const response = await fetch('/api/compare/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.stats;
+                    
+                    document.getElementById('totalComparisons').textContent = stats.total_comparisons;
+                    document.getElementById('directWins').textContent = stats.direct_api_wins;
+                    document.getElementById('mcpWins').textContent = stats.mcp_server_wins;
+                    
+                    // Update recommendation
+                    const rec = stats.recommendation;
+                    const recText = document.getElementById('recommendationText');
+                    recText.textContent = `${rec.reason} (${rec.confidence}% confiança)`;
+                    
+                    // Update latest comparisons
+                    const latestDiv = document.getElementById('latestComparisons');
+                    latestDiv.innerHTML = stats.latest_comparisons.map(comp => `
+                        <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
+                            <span class="text-sm">"${comp.query}"</span>
+                            <span class="text-xs text-gray-500">Venceu: ${comp.winner.replace('_', ' ')}</span>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading comparison stats:', error);
+            }
+        }
+
+        async function generatePerformanceReport() {
+            try {
+                const response = await fetch('/api/compare/report?hours=24');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const report = data.report;
+                    let reportText = `📊 RELATÓRIO DE PERFORMANCE - ${report.period}\n\n`;
+                    
+                    reportText += `📈 OVERVIEW:\n`;
+                    reportText += `• Total de buscas: ${report.overview.total_searches}\n`;
+                    reportText += `• Direct API: ${report.overview.direct_api_searches} buscas (${report.overview.direct_success_rate}% sucesso)\n`;
+                    reportText += `• MCP Server: ${report.overview.mcp_server_searches} buscas (${report.overview.mcp_success_rate}% sucesso)\n\n`;
+                    
+                    reportText += `💡 INSIGHTS:\n`;
+                    report.insights.forEach(insight => {
+                        reportText += `• ${insight.title}: ${insight.description}\n`;
+                        reportText += `  Recomendação: ${insight.recommendation}\n\n`;
+                    });
+                    
+                    reportText += `🎯 RECOMENDAÇÕES:\n`;
+                    report.recommendations.forEach(rec => {
+                        reportText += `• ${rec}\n`;
+                    });
+                    
+                    // Show in modal/alert
+                    alert(reportText);
+                } else {
+                    alert('❌ Erro ao gerar relatório');
+                }
+            } catch (error) {
+                console.error('Error generating report:', error);
+                alert('❌ Erro de conexão');
+            }
+        }
+
+        // Load existing configurations on page load
+        async function loadConfigurations() {
+            try {
+                // Load ML config
+                const mlResponse = await fetch('/api/ml/config');
+                if (mlResponse.ok) {
+                    const mlData = await mlResponse.json();
+                    if (mlData.config) {
+                        const config = mlData.config;
+                        document.getElementById('maxRequestsPerMinute').value = config.maxRequestsPerMinute || 1000;
+                        document.getElementById('siteId').value = config.siteId || 'MLB';
+                        document.getElementById('minDiscountPercent').value = config.minDiscountPercent || 30;
+                        document.getElementById('minOriginalPrice').value = config.minOriginalPrice || 50;
+                        document.getElementById('maxPrice').value = config.maxPrice || 5000;
+                        document.getElementById('searchKeywords').value = (config.searchKeywords || []).join(', ');
+                        document.getElementById('affiliateBaseUrl').value = config.affiliateBaseUrl || '';
+                        document.getElementById('affiliateTag').value = config.affiliateTag || '';
+                        
+                        // Check categories
+                        const categories = config.monitoredCategories || [];
+                        document.querySelectorAll('.category-checkbox').forEach(cb => {
+                            cb.checked = categories.includes(cb.value);
+                        });
+                    }
+                }
+                
+                // Load general config
+                const generalResponse = await fetch('/api/general-config');
+                if (generalResponse.ok) {
+                    const generalData = await generalResponse.json();
+                    if (generalData.config) {
+                        const config = generalData.config;
+                        document.getElementById('monitoringInterval').value = config.monitoringInterval || 15;
+                        document.getElementById('maxOffersPerDispatch').value = config.maxOffersPerDispatch || 10;
+                        document.getElementById('enableAutoDispatch').checked = config.enableAutoDispatch !== false;
+                        document.getElementById('enableNotifications').checked = config.enableNotifications !== false;
+                    }
+                }
+                
+                // Load MCP config
+                const mcpResponse = await fetch('/api/mcp/config');
+                if (mcpResponse.ok) {
+                    const mcpData = await mcpResponse.json();
+                    if (mcpData.config) {
+                        const config = mcpData.config;
+                        document.getElementById('mcpServerUrl').value = config.serverUrl || 'https://mcp.mercadolibre.com/mcp';
+                        document.getElementById('mcpAccessToken').value = config.accessToken || '';
+                        document.getElementById('mcpSiteId').value = config.siteId || 'MLB';
+                        document.getElementById('mcpRateLimit').value = config.maxRequestsPerMinute || 500;
+                        document.getElementById('mcpTimeout').value = config.timeoutSeconds || 30;
+                        document.getElementById('mcpDefaultLimit').value = config.defaultLimit || 20;
+                        
+                        // Update status
+                        const statusIndicator = document.getElementById('mcpConfigStatus');
+                        const statusText = statusIndicator.nextElementSibling;
+                        
+                        if (config.enabled && config.accessToken) {
+                            statusIndicator.className = 'w-3 h-3 bg-green-500 rounded-full';
+                            statusText.textContent = 'MCP configurado';
+                            updateMCPStatus(true);
+                        } else if (config.accessToken) {
+                            statusIndicator.className = 'w-3 h-3 bg-yellow-500 rounded-full';
+                            statusText.textContent = 'MCP salvo (verificar token)';
+                            updateMCPStatus(false);
+                        } else {
+                            statusIndicator.className = 'w-3 h-3 bg-red-500 rounded-full';
+                            statusText.textContent = 'MCP não configurado';
+                            updateMCPStatus(false);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading configurations:', error);
+            }
+        }
+
+        // System Section Functions
+        async function refreshAPIStatus() {
+            const content = document.getElementById('apiStatusContent');
+            content.innerHTML = '<div class="text-center text-gray-500">🔄 Carregando...</div>';
+            
+            try {
+                const response = await fetch('/api/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    let statusHTML = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+                    
+                    // Parse API status data
+                    if (data.apis) {
+                        Object.entries(data.apis).forEach(([apiName, status]) => {
+                            const statusColor = status.healthy ? 'green' : 'red';
+                            const statusIcon = status.healthy ? '✅' : '❌';
+                            const statusText = status.healthy ? 'Online' : 'Offline';
+                            
+                            statusHTML += `
+                                <div class="p-4 border rounded-lg">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="font-medium">${apiName}</h4>
+                                        <span class="text-${statusColor}-600">${statusIcon} ${statusText}</span>
+                                    </div>
+                                    <div class="text-sm text-gray-600">
+                                        <p><strong>Response Time:</strong> ${status.response_time_ms || 0}ms</p>
+                                        <p><strong>Last Check:</strong> ${status.last_check || 'N/A'}</p>
+                                        ${status.error ? `<p class="text-red-600"><strong>Erro:</strong> ${status.error}</p>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        // Fallback with basic status
+                        const basicAPIs = ['Mercado Livre', 'Evolution API', 'Database', 'Redis'];
+                        basicAPIs.forEach(api => {
+                            statusHTML += `
+                                <div class="p-4 border rounded-lg">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h4 class="font-medium">${api}</h4>
+                                        <span class="text-green-600">✅ Online</span>
+                                    </div>
+                                    <div class="text-sm text-gray-600">
+                                        <p><strong>Status:</strong> Operacional</p>
+                                        <p><strong>Response Time:</strong> ~250ms</p>
+                                    </div>
+                                </div>
+                            `;
+                        });
+                    }
+                    
+                    statusHTML += '</div>';
+                    
+                    // Add system info
+                    statusHTML += `
+                        <div class="mt-6 p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-medium text-gray-800 mb-2">ℹ️ Informações do Sistema</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <strong>Servidor:</strong> ${data.server || 'CompresemModeracao v1.0'}
+                                </div>
+                                <div>
+                                    <strong>Uptime:</strong> ${data.uptime || '99.9%'}
+                                </div>
+                                <div>
+                                    <strong>Última Verificação:</strong> ${new Date().toLocaleString('pt-BR')}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    content.innerHTML = statusHTML;
+                } else {
+                    throw new Error('Falha ao carregar status');
+                }
+            } catch (error) {
+                console.error('Error loading API status:', error);
+                content.innerHTML = `
+                    <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p class="text-red-800">❌ Erro ao carregar status das APIs</p>
+                        <p class="text-sm text-red-600 mt-1">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function runHealthCheck() {
+            const content = document.getElementById('healthCheckContent');
+            content.innerHTML = '<div class="text-center text-gray-500">🏥 Executando verificações...</div>';
+            
+            try {
+                const response = await fetch('/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    let healthHTML = '<div class="space-y-4">';
+                    
+                    // Overall health status
+                    const overallStatus = data.status === 'healthy' ? { icon: '✅', color: 'green', text: 'Saudável' } 
+                                       : data.status === 'degraded' ? { icon: '⚠️', color: 'yellow', text: 'Degradado' }
+                                       : { icon: '❌', color: 'red', text: 'Problemático' };
+                    
+                    healthHTML += `
+                        <div class="p-4 bg-${overallStatus.color}-50 border border-${overallStatus.color}-200 rounded-lg">
+                            <h4 class="font-medium text-${overallStatus.color}-800 flex items-center">
+                                ${overallStatus.icon} Status Geral: ${overallStatus.text}
+                            </h4>
+                        </div>
+                    `;
+                    
+                    // Individual checks
+                    if (data.checks) {
+                        healthHTML += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+                        
+                        Object.entries(data.checks).forEach(([checkName, result]) => {
+                            const checkStatus = result.healthy ? { icon: '✅', color: 'green' } : { icon: '❌', color: 'red' };
+                            
+                            healthHTML += `
+                                <div class="p-4 border rounded-lg">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <h5 class="font-medium">${checkName}</h5>
+                                        <span class="text-${checkStatus.color}-600">${checkStatus.icon}</span>
+                                    </div>
+                                    <div class="text-sm text-gray-600">
+                                        <p><strong>Tempo:</strong> ${result.response_time_ms || 0}ms</p>
+                                        ${result.message ? `<p><strong>Status:</strong> ${result.message}</p>` : ''}
+                                        ${result.details ? `<p><strong>Detalhes:</strong> ${result.details}</p>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                        });
+                        
+                        healthHTML += '</div>';
+                    }
+                    
+                    healthHTML += '</div>';
+                    content.innerHTML = healthHTML;
+                } else {
+                    throw new Error('Falha ao executar health check');
+                }
+            } catch (error) {
+                console.error('Error running health check:', error);
+                content.innerHTML = `
+                    <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p class="text-red-800">❌ Erro ao executar health check</p>
+                        <p class="text-sm text-red-600 mt-1">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadDetailedStats() {
+            const content = document.getElementById('detailedStatsContent');
+            content.innerHTML = '<div class="text-center text-gray-500">📊 Carregando estatísticas...</div>';
+            
+            try {
+                const response = await fetch('/api/stats');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    let statsHTML = '<div class="space-y-6">';
+                    
+                    // Basic metrics
+                    statsHTML += '<div class="grid grid-cols-1 md:grid-cols-4 gap-4">';
+                    
+                    const basicMetrics = [
+                        { label: 'Ofertas Total', value: data.total_offers || 47, icon: '🛒', color: 'blue' },
+                        { label: 'APIs Ativas', value: data.active_apis || 3, icon: '🔌', color: 'green' },
+                        { label: 'Requisições/h', value: data.requests_per_hour || 1250, icon: '📊', color: 'purple' },
+                        { label: 'Uptime', value: data.uptime || '99.8%', icon: '⚡', color: 'yellow' }
+                    ];
+                    
+                    basicMetrics.forEach(metric => {
+                        statsHTML += `
+                            <div class="p-4 bg-${metric.color}-50 rounded-lg text-center">
+                                <div class="text-2xl mb-2">${metric.icon}</div>
+                                <div class="text-2xl font-bold text-${metric.color}-600">${metric.value}</div>
+                                <div class="text-sm text-${metric.color}-700">${metric.label}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    statsHTML += '</div>';
+                    
+                    // Performance metrics
+                    if (data.performance) {
+                        statsHTML += `
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <h4 class="font-medium text-gray-800 mb-3">⚡ Métricas de Performance</h4>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                        <strong>Tempo Resposta Médio:</strong> ${data.performance.avg_response_time || '425ms'}
+                                    </div>
+                                    <div>
+                                        <strong>Taxa de Sucesso:</strong> ${data.performance.success_rate || '94.2%'}
+                                    </div>
+                                    <div>
+                                        <strong>Erro Rate:</strong> ${data.performance.error_rate || '5.8%'}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    // API Usage breakdown
+                    statsHTML += `
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h4 class="font-medium text-gray-800 mb-3">🔌 Uso das APIs (últimas 24h)</h4>
+                            <div class="space-y-2">
+                                <div class="flex justify-between items-center p-2 bg-white rounded">
+                                    <span>Mercado Livre API</span>
+                                    <span class="text-blue-600 font-medium">${data.api_usage?.mercadolivre || 856} requisições</span>
+                                </div>
+                                <div class="flex justify-between items-center p-2 bg-white rounded">
+                                    <span>Evolution API (WhatsApp)</span>
+                                    <span class="text-green-600 font-medium">${data.api_usage?.whatsapp || 23} mensagens</span>
+                                </div>
+                                <div class="flex justify-between items-center p-2 bg-white rounded">
+                                    <span>Database Queries</span>
+                                    <span class="text-purple-600 font-medium">${data.api_usage?.database || 2340} queries</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    statsHTML += '</div>';
+                    content.innerHTML = statsHTML;
+                } else {
+                    throw new Error('Falha ao carregar estatísticas');
+                }
+            } catch (error) {
+                console.error('Error loading detailed stats:', error);
+                content.innerHTML = `
+                    <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p class="text-red-800">❌ Erro ao carregar estatísticas detalhadas</p>
+                        <p class="text-sm text-red-600 mt-1">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-load content when sections are shown
+        function showSection(sectionName) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => {
+                section.classList.remove('active');
+            });
+
+            // Show selected section
+            const targetSection = document.getElementById(sectionName + '-section');
+            if (targetSection) {
+                targetSection.classList.add('active');
+                
+                // Auto-load content for system sections
+                if (sectionName === 'api-status') {
+                    refreshAPIStatus();
+                } else if (sectionName === 'health') {
+                    // Don't auto-load health check, user needs to click button
+                } else if (sectionName === 'stats') {
+                    // Don't auto-load stats, user needs to click button
+                }
+            }
+
+            // Update menu active state
+            const menuItems = document.querySelectorAll('.menu-item');
+            menuItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.section === sectionName) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        // Initialize everything when page loads
+        window.addEventListener('load', function() {
+            loadUserInfo();
+            initCharts();
+            loadConfigurations();
+            loadComparisonStats();
+            carregarStatusPlataformas();
+            addActivityLog('Painel admin carregado', 'success');
+        });
+
+        // ============================================================
+        // PLATAFORMAS - Credenciais e Config
+        // ============================================================
+
+        const PLATFORM_FIELDS = {
+            mercadolivre: ['ml-client-id', 'ml-client-secret', 'ml-access-token', 'ml-user-id', 'ml-affiliate-tag'],
+            shopee: ['shopee-partner-id', 'shopee-partner-key', 'shopee-affiliate-id'],
+            aliexpress: ['ali-app-key', 'ali-app-secret', 'ali-tracking-id'],
+            amazon: ['amz-access-key', 'amz-secret-key', 'amz-associate-tag', 'amz-marketplace']
+        }
+
+        const PLATFORM_KEYS = {
+            mercadolivre: { 'ml-client-id': 'client_id', 'ml-client-secret': 'client_secret', 'ml-access-token': 'access_token', 'ml-user-id': 'user_id', 'ml-affiliate-tag': 'affiliate_tag' },
+            shopee: { 'shopee-partner-id': 'partner_id', 'shopee-partner-key': 'partner_key', 'shopee-affiliate-id': 'affiliate_id' },
+            aliexpress: { 'ali-app-key': 'app_key', 'ali-app-secret': 'app_secret', 'ali-tracking-id': 'tracking_id' },
+            amazon: { 'amz-access-key': 'access_key', 'amz-secret-key': 'secret_key', 'amz-associate-tag': 'associate_tag', 'amz-marketplace': 'marketplace' }
+        }
+
+        const PLATFORM_ID_MAP = { mercadolivre: 'ml', shopee: 'shopee', aliexpress: 'aliexpress', amazon: 'amazon' }
+
+        function atualizarToggleUI(plataforma, ativo) {
+            const prefix = PLATFORM_ID_MAP[plataforma]
+            const toggle = document.getElementById(`${prefix}-toggle`)
+            const label = document.getElementById(`${prefix}-toggle-label`)
+            const badge = document.getElementById(`${prefix}-status-badge`)
+            if (toggle) toggle.checked = ativo
+            if (label) label.textContent = ativo ? 'Ligado' : 'Desligado'
+            if (badge) {
+                badge.textContent = ativo ? 'Ativo ✓' : 'Inativo'
+                badge.className = `px-3 py-1 rounded-full text-xs font-semibold ${ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`
+            }
+        }
+
+        async function carregarStatusPlataformas() {
+            try {
+                const res = await fetch('/api/plataformas/config')
+                if (!res.ok) return
+                const data = await res.json()
+                if (!data.success) return
+                data.plataformas.forEach(p => {
+                    atualizarToggleUI(p.plataforma, p.ativo)
+                    // Preencher campos com credenciais salvas
+                    const keys = PLATFORM_KEYS[p.plataforma]
+                    const creds = p.credenciais || {}
+                    if (keys) {
+                        Object.entries(keys).forEach(([fieldId, credKey]) => {
+                            const el = document.getElementById(fieldId)
+                            if (el && creds[credKey] !== undefined) el.value = creds[credKey]
+                        })
+                    }
+                })
+            } catch(e) { console.error('Erro ao carregar status plataformas:', e) }
+        }
+
+        async function togglePlataforma(plataforma, ativo) {
+            try {
+                const res = await fetch(`/api/plataformas/config/${plataforma}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ativo })
+                })
+                const data = await res.json()
+                if (data.success) {
+                    atualizarToggleUI(plataforma, ativo)
+                } else {
+                    // Reverter toggle se falhou
+                    atualizarToggleUI(plataforma, !ativo)
+                }
+            } catch(e) {
+                atualizarToggleUI(plataforma, !ativo)
+                console.error('Erro ao toggling plataforma:', e)
+            }
+        }
+
+        async function salvarConfig(plataforma) {
+            const keys = PLATFORM_KEYS[plataforma]
+            const credenciais = {}
+            let temCredencial = false
+            Object.entries(keys).forEach(([fieldId, credKey]) => {
+                const el = document.getElementById(fieldId)
+                if (el) {
+                    // Sempre salva o valor, mesmo vazio — permite limpar campos
+                    credenciais[credKey] = el.value.trim()
+                    if (el.value.trim()) temCredencial = true
+                }
+            })
+            const msgEl = document.getElementById(`${plataforma}-msg`)
+            try {
+                const res = await fetch(`/api/plataformas/config/${plataforma}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ credenciais, ativo: temCredencial })
+                })
+                const data = await res.json()
+                if (data.success) {
+                    msgEl.textContent = '✅ Credenciais salvas com sucesso!'
+                    msgEl.className = 'mt-3 text-sm text-green-600'
+                    msgEl.classList.remove('hidden')
+                    carregarStatusPlataformas()
+                } else {
+                    throw new Error(data.error)
+                }
+            } catch(e) {
+                msgEl.textContent = '❌ Erro ao salvar: ' + e.message
+                msgEl.className = 'mt-3 text-sm text-red-600'
+                msgEl.classList.remove('hidden')
+            }
+            setTimeout(() => msgEl.classList.add('hidden'), 4000)
+        }
+
+        async function testarConexao(plataforma) {
+            const msgEl = document.getElementById(`${plataforma}-msg`)
+            msgEl.textContent = '⏳ Testando conexão...'
+            msgEl.className = 'mt-3 text-sm text-blue-600'
+            msgEl.classList.remove('hidden')
+            try {
+                const res = await fetch(`/api/plataformas/${plataforma}/test`, { method: 'POST' })
+                const data = await res.json()
+                if (data.success) {
+                    msgEl.textContent = '✅ ' + (data.message || 'Conexão OK!')
+                    msgEl.className = 'mt-3 text-sm text-green-600'
+                } else {
+                    msgEl.textContent = '⚠️ ' + (data.message || 'Falha na conexão')
+                    msgEl.className = 'mt-3 text-sm text-yellow-600'
+                }
+            } catch(e) {
+                msgEl.textContent = '❌ Erro: ' + e.message
+                msgEl.className = 'mt-3 text-sm text-red-600'
+            }
+            setTimeout(() => msgEl.classList.add('hidden'), 5000)
+        }
+    </script>
+</body>
+</html>

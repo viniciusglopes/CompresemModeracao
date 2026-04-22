@@ -1,0 +1,39 @@
+# CompresemModeracao - Docker Compose
+
+version: '3.8'
+
+services:
+  compresemmoderacao-web:
+    build: .
+    container_name: compresemmoderacao-web
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      - csm-data:/app/data
+      - csm-logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.csm.rule=Host(`compresemmoderacao.com.br`)"
+      - "traefik.http.routers.csm.tls=true"
+      - "traefik.http.routers.csm.tls.certresolver=letsencrypt"
+
+volumes:
+  csm-data:
+    driver: local
+  csm-logs:
+    driver: local
+
+networks:
+  default:
+    external:
+      name: coolify
