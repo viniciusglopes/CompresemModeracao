@@ -17,28 +17,15 @@ interface Produto {
   created_at: string
 }
 
-const NICHOS = [
-  { id: '', label: 'Tudo', emoji: '💕' },
-  { id: 'beleza', label: 'Beleza', emoji: '💄' },
-  { id: 'moda', label: 'Moda', emoji: '👗' },
-  { id: 'calcados', label: 'Calçados', emoji: '👠' },
-  { id: 'casa_moveis', label: 'Casa & Decor', emoji: '🏡' },
-  { id: 'saude', label: 'Saúde & Bem-estar', emoji: '🧘' },
-  { id: 'bebes', label: 'Bebês & Kids', emoji: '🍼' },
-  { id: 'brinquedos', label: 'Brinquedos', emoji: '🧸' },
-  { id: 'pet_shop', label: 'Pet Shop', emoji: '🐾' },
-  { id: 'eletrodomesticos', label: 'Eletrodomésticos', emoji: '🏠' },
-  { id: 'eletronicos', label: 'Eletrônicos', emoji: '📱' },
-  { id: 'informatica', label: 'Informática', emoji: '💻' },
-  { id: 'esportes', label: 'Esportes', emoji: '🏃‍♀️' },
-  { id: 'alimentos', label: 'Alimentos', emoji: '🍎' },
-  { id: 'livros', label: 'Livros', emoji: '📚' },
-  { id: 'games', label: 'Games', emoji: '🎮' },
-  { id: 'audio_video', label: 'Áudio e Vídeo', emoji: '🎧' },
-  { id: 'cameras', label: 'Câmeras', emoji: '📷' },
-  { id: 'ferramentas', label: 'Ferramentas', emoji: '🔧' },
-  { id: 'musica', label: 'Música', emoji: '🎸' },
-  { id: 'veiculos_acess', label: 'Veículos', emoji: '🚗' },
+const NICHOS_GRID = [
+  { id: 'beleza', label: 'Beleza', emoji: '💄', gradient: 'from-pink-200 to-rose-300' },
+  { id: 'moda', label: 'Moda', emoji: '👗', gradient: 'from-purple-200 to-violet-300' },
+  { id: 'calcados', label: 'Calçados', emoji: '👠', gradient: 'from-amber-200 to-orange-300' },
+  { id: 'casa_moveis', label: 'Casa & Decor', emoji: '🏡', gradient: 'from-emerald-200 to-teal-300' },
+  { id: 'saude', label: 'Bem-estar', emoji: '🧘', gradient: 'from-cyan-200 to-sky-300' },
+  { id: 'bebes', label: 'Bebês & Kids', emoji: '🍼', gradient: 'from-yellow-200 to-amber-300' },
+  { id: 'pet_shop', label: 'Pet Shop', emoji: '🐾', gradient: 'from-orange-200 to-red-300' },
+  { id: 'eletrodomesticos', label: 'Eletro', emoji: '🏠', gradient: 'from-blue-200 to-indigo-300' },
 ]
 
 function timeAgo(iso: string) {
@@ -198,25 +185,25 @@ export default function HomePage() {
     : produtos
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-rose-500 sticky top-0 z-40 shadow-md">
+    <div className="min-h-screen bg-gradient-to-b from-rose-50 via-pink-50 to-white">
+      {/* Header glassmorphism */}
+      <header className="bg-white/70 backdrop-blur-lg sticky top-0 z-40 shadow-sm border-b border-pink-100">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center gap-3">
           <a href="/" className="flex items-center gap-2 shrink-0">
             <span className="text-2xl">👜</span>
             <div className="hidden sm:block">
-              <p className="font-bold text-white text-base leading-none">Compre sem Moderação</p>
-              <p className="text-rose-200 text-xs">As melhores ofertas pra você</p>
+              <p className="font-bold bg-gradient-to-r from-pink-500 to-fuchsia-500 bg-clip-text text-transparent text-base leading-none">Compre sem Moderação</p>
+              <p className="text-pink-300 text-xs">As melhores ofertas pra você</p>
             </div>
           </a>
 
           <div className="flex-1 max-w-xl mx-auto">
             <input
               type="text"
-              placeholder="🔍  Buscar produtos..."
+              placeholder="🔍  O que você procura?"
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              className="w-full px-4 py-2 rounded-xl text-sm bg-white/25 text-white placeholder-rose-100 border border-white/30 focus:outline-none focus:bg-white focus:text-gray-800 focus:placeholder-gray-400 transition-colors"
+              className="w-full px-5 py-2.5 rounded-2xl text-sm bg-pink-50 text-gray-700 placeholder-pink-300 border border-pink-200 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:bg-white transition-all"
             />
           </div>
 
@@ -227,36 +214,52 @@ export default function HomePage() {
               { id: 'shopee', label: '🧡 Shopee' },
             ].map(p => (
               <button key={p.id} onClick={() => setPlataforma(p.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${plataforma === p.id ? 'bg-white text-rose-600' : 'text-white/80 hover:bg-white/20'}`}>
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${plataforma === p.id ? 'bg-pink-500 text-white' : 'text-pink-500 hover:bg-pink-50'}`}>
                 {p.label}
               </button>
             ))}
           </div>
 
-          <a href="/admin" className="text-white/60 hover:text-white text-xs shrink-0 transition-colors">
+          <a href="/admin" className="text-pink-300 hover:text-pink-500 text-xs shrink-0 transition-colors">
             Admin
           </a>
         </div>
       </header>
 
-      {/* Barra de categorias */}
-      <div className="bg-white border-b sticky top-[57px] z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 overflow-x-auto">
-          <div className="flex gap-1 py-2 min-w-max">
-            {NICHOS.map(n => (
-              <button key={n.id} onClick={() => setNichoAtivo(n.id)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${nichoAtivo === n.id ? 'bg-rose-500 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'}`}>
-                <span>{n.emoji}</span>
-                <span>{n.label}</span>
-              </button>
-            ))}
+      {/* Categorias em grid colorido */}
+      <div className="max-w-7xl mx-auto px-4 py-5">
+        <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Categorias</p>
+        <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+          {NICHOS_GRID.map(n => (
+            <button key={n.id} onClick={() => setNichoAtivo(nichoAtivo === n.id ? '' : n.id)} className="group">
+              <div className={`bg-gradient-to-br ${n.gradient} rounded-2xl p-3 flex flex-col items-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-200 ${nichoAtivo === n.id ? 'ring-2 ring-pink-500 ring-offset-2 shadow-lg scale-105' : ''}`}>
+                <span className="text-3xl drop-shadow-sm">{n.emoji}</span>
+                <span className="text-xs font-semibold text-gray-700 text-center leading-tight">{n.label}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+        {nichoAtivo && (
+          <button onClick={() => setNichoAtivo('')} className="mt-3 text-xs text-pink-500 hover:text-pink-600 font-medium">
+            ✕ Limpar filtro: {NICHOS_GRID.find(n => n.id === nichoAtivo)?.emoji} {NICHOS_GRID.find(n => n.id === nichoAtivo)?.label}
+          </button>
+        )}
+      </div>
+
+      {/* Banner destaque */}
+      <div className="max-w-7xl mx-auto px-4 pb-4">
+        <div className="bg-gradient-to-r from-pink-400 via-rose-400 to-fuchsia-400 rounded-3xl p-6 flex items-center justify-between shadow-lg">
+          <div>
+            <p className="text-white font-extrabold text-xl">Até 70% OFF 🔥</p>
+            <p className="text-pink-100 text-sm mt-1">Ofertas selecionadas especialmente pra você</p>
           </div>
+          <span className="text-5xl">🛍️</span>
         </div>
       </div>
 
       {/* Toast de novas ofertas */}
       {novasOfertas > 0 && (
-        <div className="fixed top-28 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-bounce">
           <button onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); setNovasOfertas(0) }}
             className="bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-full shadow-xl text-sm font-bold flex items-center gap-2 transition-colors">
             ⬆ {novasOfertas} nova{novasOfertas > 1 ? 's oferta chegou!' : ' oferta chegou!'}
@@ -264,29 +267,24 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Main */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="flex items-center justify-between mb-5">
-          <p className="text-sm text-gray-500">
-            <span className="font-semibold text-gray-800">{produtosFiltrados.length}</span> ofertas
-            {nichoAtivo && (
-              <span className="ml-1">
-                em <b>{NICHOS.find(n => n.id === nichoAtivo)?.emoji} {NICHOS.find(n => n.id === nichoAtivo)?.label}</b>
-              </span>
-            )}
+      {/* Grid de produtos */}
+      <main className="max-w-7xl mx-auto px-4 pb-8">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-gray-400">
+            <span className="font-semibold text-gray-600">{produtosFiltrados.length}</span> ofertas
           </p>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400">🔄 atualiza a cada 60s</span>
-            <button onClick={() => { load(); setNovasOfertas(0) }} className="text-xs text-rose-500 hover:text-rose-600 font-medium">
+            <span className="text-xs text-pink-400">🔄 atualiza a cada 60s</span>
+            <button onClick={() => { load(); setNovasOfertas(0) }} className="text-xs text-pink-500 hover:text-pink-600 font-medium">
               Atualizar agora
             </button>
           </div>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {Array.from({ length: 15 }).map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl border animate-pulse h-64" />
+              <div key={i} className="bg-white rounded-3xl border animate-pulse h-72" />
             ))}
           </div>
         ) : produtosFiltrados.length === 0 ? (
@@ -297,76 +295,51 @@ export default function HomePage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {produtosFiltrados.map(p => {
-                return (
-                  <div key={p.id} onClick={() => setProdutoModal(p)}
-                    className="cursor-pointer bg-white rounded-2xl border border-gray-100 hover:border-rose-300 hover:shadow-lg transition-all group flex flex-col overflow-hidden">
-
-                    {/* Imagem */}
-                    <div className="relative bg-gray-50 h-36 sm:h-44 flex items-center justify-center overflow-hidden">
-                      {p.thumbnail ? (
-                        <img src={p.thumbnail} alt={p.titulo}
-                          className="w-full h-full object-contain p-3 group-hover:scale-105 transition-transform duration-300" />
-                      ) : (
-                        <span className="text-4xl opacity-20">👜</span>
-                      )}
-                      <span className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full shadow-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+              {produtosFiltrados.map(p => (
+                <div key={p.id} onClick={() => setProdutoModal(p)}
+                  className="cursor-pointer bg-white rounded-3xl hover:shadow-2xl transition-all group flex flex-col overflow-hidden shadow-sm border border-gray-100">
+                  <div className="relative bg-gray-50 h-40 sm:h-48 flex items-center justify-center overflow-hidden">
+                    {p.thumbnail ? (
+                      <img src={p.thumbnail} alt={p.titulo}
+                        className="w-full h-full object-contain p-3 group-hover:scale-110 transition-transform duration-500" />
+                    ) : (
+                      <span className="text-4xl opacity-20">👜</span>
+                    )}
+                    <div className="absolute top-2 left-2 flex flex-col gap-1">
+                      <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-lg shadow">
                         -{p.desconto_percent}%
                       </span>
-                      {p.frete_gratis && (
-                        <span className="absolute top-2 right-2 bg-blue-500 text-white text-xs font-semibold px-1.5 py-0.5 rounded-full shadow-sm">
-                          🚚
-                        </span>
-                      )}
                     </div>
-
-                    {/* Texto */}
-                    <div className="flex flex-col flex-1 p-3">
-                      <p className="text-xs text-gray-700 font-medium line-clamp-2 leading-snug mb-2">
-                        {p.titulo}
+                    {p.frete_gratis && (
+                      <span className="absolute bottom-2 left-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg">
+                        FRETE GRÁTIS
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-col flex-1 p-3.5">
+                    <p className="text-xs text-gray-600 line-clamp-2 leading-snug mb-3">{p.titulo}</p>
+                    <div className="mt-auto">
+                      <p className="text-xs text-gray-400 line-through">{fmt(p.preco_original)}</p>
+                      <p className="text-xl font-black text-gray-900">{fmt(p.preco)}</p>
+                      <p className="text-xs text-emerald-500 font-semibold mt-0.5">
+                        Economize {fmt(p.preco_original - p.preco)}
                       </p>
-
-                      <div className="mt-auto">
-                        <p className="text-base font-bold text-green-700 leading-none">{fmt(p.preco)}</p>
-                        <p className="text-xs text-gray-400 line-through mt-0.5">{fmt(p.preco_original)}</p>
-                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                          {p.plataforma === 'shopee' ? (
-                            <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-                              🧡 Shopee
-                            </span>
-                          ) : p.plataforma === 'aliexpress' ? (
-                            <span className="inline-flex items-center gap-1 bg-red-100 text-red-600 text-xs font-semibold px-2 py-0.5 rounded-full">
-                              🔴 AliExpress
-                            </span>
-                          ) : p.plataforma === 'amazon' ? (
-                            <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-                              📦 Amazon
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 bg-yellow-50 text-yellow-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-yellow-200">
-                              🛒 Mercado Livre
-                            </span>
-                          )}
-                          <span className="text-xs text-gray-400">{timeAgo(p.created_at)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="px-3 pb-3">
-                      <div className="w-full py-2 bg-rose-500 group-hover:bg-rose-600 text-white text-xs font-bold rounded-xl text-center transition-colors">
-                        Ver oferta →
-                      </div>
                     </div>
                   </div>
-                )
-              })}
+                  <div className="px-3.5 pb-3.5">
+                    <div className="w-full py-2.5 bg-gray-900 group-hover:bg-pink-500 text-white text-xs font-bold rounded-xl text-center transition-colors">
+                      COMPRAR →
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
 
             {hasMore && !busca && (
               <div className="text-center mt-8">
                 <button onClick={loadMore} disabled={loadingMore}
-                  className="px-8 py-3 bg-white border-2 border-rose-400 text-rose-500 font-semibold rounded-xl hover:bg-rose-50 transition-colors text-sm disabled:opacity-50">
+                  className="px-8 py-3 bg-white border-2 border-pink-400 text-pink-500 font-semibold rounded-xl hover:bg-pink-50 transition-colors text-sm disabled:opacity-50">
                   {loadingMore ? '⏳ Carregando...' : 'Carregar mais ofertas'}
                 </button>
               </div>
@@ -386,7 +359,6 @@ export default function HomePage() {
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setProdutoModal(null)}>
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              {/* Barra de ações */}
               <div className="flex items-center justify-between border-b px-5 py-3">
                 <div className="flex gap-1">
                   <button onClick={() => copiarLink(link)}
@@ -407,9 +379,7 @@ export default function HomePage() {
                 </button>
               </div>
 
-              {/* Conteúdo */}
               <div className="flex flex-col sm:flex-row gap-6 p-6">
-                {/* Imagem */}
                 <div className="sm:w-56 shrink-0 bg-gray-50 rounded-2xl flex items-center justify-center h-52 overflow-hidden">
                   {p.thumbnail ? (
                     <img src={p.thumbnail} alt={p.titulo} className="w-full h-full object-contain p-4" />
@@ -418,23 +388,22 @@ export default function HomePage() {
                   )}
                 </div>
 
-                {/* Detalhes */}
                 <div className="flex-1">
-                  <p className="text-xs font-semibold text-rose-500 mb-1">{plataformaLabel}</p>
+                  <p className="text-xs font-semibold text-pink-500 mb-1">{plataformaLabel}</p>
                   <h2 className="text-base font-bold text-gray-900 leading-snug mb-4">{p.titulo}</h2>
 
                   <div className="flex items-end gap-3 mb-1">
-                    <span className="text-3xl font-extrabold text-green-700">{fmt(p.preco)}</span>
+                    <span className="text-3xl font-extrabold text-gray-900">{fmt(p.preco)}</span>
                     <span className="text-sm text-gray-400 line-through mb-1">{fmt(p.preco_original)}</span>
                   </div>
                   <div className="flex items-center gap-2 mb-4">
                     <span className="bg-red-500 text-white text-sm font-bold px-2.5 py-0.5 rounded-full">-{p.desconto_percent}%</span>
-                    <span className="text-sm text-green-600 font-medium">Economize {fmt(economia)}</span>
-                    {p.frete_gratis && <span className="text-sm text-blue-600 font-medium">🚚 Frete grátis</span>}
+                    <span className="text-sm text-emerald-600 font-medium">Economize {fmt(economia)}</span>
+                    {p.frete_gratis && <span className="text-sm text-emerald-600 font-medium">🚚 Frete grátis</span>}
                   </div>
 
                   <a href={link} target="_blank" rel="noopener noreferrer"
-                    className="block w-full py-3.5 bg-rose-500 hover:bg-rose-600 text-white font-extrabold text-base rounded-2xl text-center transition-colors shadow-md shadow-rose-200 mb-3">
+                    className="block w-full py-3.5 bg-gray-900 hover:bg-pink-500 text-white font-extrabold text-base rounded-2xl text-center transition-colors shadow-md mb-3">
                     COMPRAR AGORA →
                   </a>
 
@@ -448,7 +417,7 @@ export default function HomePage() {
         )
       })()}
 
-      <footer className="mt-12 border-t bg-white py-6 text-center text-xs text-gray-400">
+      <footer className="border-t bg-white py-6 text-center text-xs text-gray-400">
         <p>👜 <strong>Compre sem Moderação</strong> — Ofertas atualizadas automaticamente</p>
         <p className="mt-1">Os links desta página são de programas de afiliados.</p>
       </footer>
