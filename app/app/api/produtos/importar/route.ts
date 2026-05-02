@@ -201,7 +201,8 @@ async function scrapeUrl(url: string) {
   }
 
   const titulo = (jsonLd?.name || meta('og:title') || meta('twitter:title') || '')
-    .replace(/\s*\|\s*.+$/, '').trim() // remove " | Shopee Brasil", "| Amazon"
+    .replace(/\s*[|–-]\s*(Nike|Shopee|Amazon|AliExpress|Natura|Boticário|Renner|Adidas|Centauro|Vivara)\s*$/, '')
+    .replace(/\s*\|\s*.+$/, '').trim()
 
   const thumbnail = (Array.isArray(jsonLd?.image) ? jsonLd.image[0] : jsonLd?.image)
     || meta('og:image') || meta('twitter:image') || ''
@@ -237,7 +238,7 @@ async function scrapeUrl(url: string) {
   }
 
   let thumbClean = typeof thumbnail === 'string' ? thumbnail : ''
-  const archiveMatch = thumbClean.match(/web\.archive\.org\/web\/\d+im_\/(https?:\/\/.+)/)
+  const archiveMatch = thumbClean.match(/web\.archive\.org\/web\/\d+(?:im_)?\/(https?:\/\/.+)/)
   if (archiveMatch) thumbClean = archiveMatch[1]
 
   return { titulo, thumbnail: thumbClean, preco, precoOriginal }
