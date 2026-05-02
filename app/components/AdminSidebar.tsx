@@ -10,7 +10,7 @@ const navItems = [
   { label: 'Produtos', href: '/admin/produtos', icon: '🏷️' },
   { label: 'Ofertas', href: '/admin/ofertas', icon: '🎯' },
   { label: 'Disparos', href: '/admin/disparos', icon: '📤' },
-  { label: 'Importar Link', href: '/admin/importar', icon: '🔗' },
+  { label: 'Importar Produto', href: '/admin/importar', icon: '🔗' },
   { label: 'Grupos', href: '/admin/grupos', icon: '📡' },
   { label: 'Logs de API', href: '/admin/logs', icon: '🗂️' },
   { label: 'Analytics', href: '/admin/analytics', icon: '📈' },
