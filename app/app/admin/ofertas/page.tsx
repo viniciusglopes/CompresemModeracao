@@ -311,10 +311,10 @@ export default function OfertasPage() {
             {/* Plataforma */}
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Plataforma</p>
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 {PLATAFORMAS.map(p => (
                   <button key={p.id} onClick={() => setPlataformaFiltro(p.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${plataformaFiltro === p.id ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${plataformaFiltro === p.id ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
                     {p.label}
                   </button>
                 ))}

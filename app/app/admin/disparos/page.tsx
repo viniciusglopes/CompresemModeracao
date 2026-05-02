@@ -33,7 +33,9 @@ interface DisparoConfig {
   desconto_minimo_ml: number
   score_minimo_shopee: number
   hora_inicio: number
+  minuto_inicio: number
   hora_fim: number
+  minuto_fim: number
   intervalo_minutos: number
   min_produtos: number
   max_produtos: number
@@ -275,27 +277,27 @@ export default function DisparosPage() {
                       className="w-full px-2.5 py-1.5 rounded-lg text-sm border border-gray-200 bg-gray-50 focus:outline-none focus:border-rose-400 focus:bg-white" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">Desconto ML (%)</label>
-                    <input type="number" value={config.desconto_minimo_ml} min={0} max={100}
-                      onChange={e => setConfig({ ...config, desconto_minimo_ml: parseInt(e.target.value) || 0 })}
-                      className="w-full px-2.5 py-1.5 rounded-lg text-sm border border-gray-200 bg-yellow-50 focus:outline-none focus:border-yellow-400 focus:bg-white" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">Score Shopee (%)</label>
-                    <input type="number" value={config.score_minimo_shopee} min={0} max={100}
-                      onChange={e => setConfig({ ...config, score_minimo_shopee: parseInt(e.target.value) || 0 })}
-                      className="w-full px-2.5 py-1.5 rounded-lg text-sm border border-gray-200 bg-rose-50 focus:outline-none focus:border-rose-400 focus:bg-white" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">Horário (início-fim)</label>
+                    <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">Início (hora:min)</label>
                     <div className="flex items-center gap-1">
                       <input type="number" value={config.hora_inicio} min={0} max={23}
                         onChange={e => setConfig({ ...config, hora_inicio: parseInt(e.target.value) || 0 })}
-                        className="w-full px-2 py-1.5 rounded-lg text-sm border border-gray-200 bg-gray-50 focus:outline-none focus:border-rose-400 text-center" />
-                      <span className="text-gray-400 text-xs">às</span>
+                        className="w-1/2 px-2 py-1.5 rounded-lg text-sm border border-gray-200 bg-gray-50 focus:outline-none focus:border-rose-400 text-center" />
+                      <span className="text-gray-400 font-bold">:</span>
+                      <input type="number" value={config.minuto_inicio ?? 0} min={0} max={59} step={5}
+                        onChange={e => setConfig({ ...config, minuto_inicio: parseInt(e.target.value) || 0 })}
+                        className="w-1/2 px-2 py-1.5 rounded-lg text-sm border border-gray-200 bg-gray-50 focus:outline-none focus:border-rose-400 text-center" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase block mb-1">Fim (hora:min)</label>
+                    <div className="flex items-center gap-1">
                       <input type="number" value={config.hora_fim} min={0} max={23}
                         onChange={e => setConfig({ ...config, hora_fim: parseInt(e.target.value) || 0 })}
-                        className="w-full px-2 py-1.5 rounded-lg text-sm border border-gray-200 bg-gray-50 focus:outline-none focus:border-rose-400 text-center" />
+                        className="w-1/2 px-2 py-1.5 rounded-lg text-sm border border-gray-200 bg-gray-50 focus:outline-none focus:border-rose-400 text-center" />
+                      <span className="text-gray-400 font-bold">:</span>
+                      <input type="number" value={config.minuto_fim ?? 0} min={0} max={59} step={5}
+                        onChange={e => setConfig({ ...config, minuto_fim: parseInt(e.target.value) || 0 })}
+                        className="w-1/2 px-2 py-1.5 rounded-lg text-sm border border-gray-200 bg-gray-50 focus:outline-none focus:border-rose-400 text-center" />
                     </div>
                   </div>
                   <div>
@@ -312,12 +314,14 @@ export default function DisparosPage() {
                   </div>
                 </div>
 
+                <p className="text-[10px] text-gray-400 italic">Regras de desconto e score ficam na página de cada plataforma (Lojas AWIN, config ML, etc).</p>
+
                 <div className="flex items-center justify-between pt-2 border-t">
                   <div className="text-xs text-gray-500">
                     {config.ultimo_disparo
                       ? `Último disparo: ${new Date(config.ultimo_disparo).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`
                       : 'Nenhum disparo realizado ainda'}
-                    {' · '}A cada {config.intervalo_minutos} min, {config.min_produtos}-{config.max_produtos} produtos (ML desconto≥{config.desconto_minimo_ml}% · Shopee score≥{config.score_minimo_shopee})
+                    {' · '}A cada {config.intervalo_minutos} min, {config.min_produtos}-{config.max_produtos} produtos · {String(config.hora_inicio).padStart(2,'0')}:{String(config.minuto_inicio ?? 0).padStart(2,'0')} às {String(config.hora_fim).padStart(2,'0')}:{String(config.minuto_fim ?? 0).padStart(2,'0')}
                   </div>
                   <Button onClick={() => salvarConfig(config)} disabled={salvandoConfig}
                     size="sm" variant="outline" className="text-xs h-7 px-3 border-rose-300 text-rose-600 hover:bg-rose-50">
