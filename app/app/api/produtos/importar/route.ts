@@ -236,6 +236,50 @@ async function scrapeUrl(url: string) {
   return { titulo, thumbnail: typeof thumbnail === 'string' ? thumbnail : '', preco, precoOriginal }
 }
 
+// ─── Fallback: busca produto no ML quando scraping falha ─────────────────────
+
+function extrairTermosDaUrl(url: string): string {
+  try {
+    const u = new URL(url)
+    let path = u.pathname.replace(/\.\w+$/, '')
+    path = path.replace(/[-_/]/g, ' ')
+    path = path.replace(/\b\d{5,}\b/g, '')
+    path = path.replace(/\b(html|php|aspx|p|item)\b/gi, '')
+    return path.replace(/\s+/g, ' ').trim()
+  } catch {
+    return ''
+  }
+}
+
+async function buscarNoMl(termos: string): Promise<{ titulo: string; preco: number; precoOriginal: number; thumbnail: string } | null> {
+  if (!termos || termos.length < 5) return null
+  try {
+    const token = await getMlAccessToken()
+    const headers: Record<string, string> = { Accept: 'application/json' }
+    if (token) headers.Authorization = `Bearer ${token}`
+
+    const res = await fetch(`${ML_API}/sites/MLB/search?q=${encodeURIComponent(termos)}&limit=3&sort=relevance`, {
+      headers,
+      cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const items = data.results || []
+    if (items.length === 0) return null
+
+    const best = items[0]
+    return {
+      titulo: best.title || '',
+      preco: best.price || 0,
+      precoOriginal: best.original_price || best.price || 0,
+      thumbnail: (best.thumbnail || '').replace('http://', 'https://'),
+    }
+  } catch {
+    return null
+  }
+}
+
 // ─── Determina nicho pelo título e plataforma ─────────────────────────────────
 
 function inferirNicho(titulo: string): string {
@@ -355,6 +399,18 @@ export async function POST(request: Request) {
           permalink: url,
           domain_id: '',
           produto_id_externo: `awin_${awinMerchantId || 'manual'}_${Date.now()}`,
+        }
+      }
+
+      if (plataforma === 'awin' && (!dados.titulo || !dados.thumbnail)) {
+        const termos = extrairTermosDaUrl(url)
+        if (termos) {
+          const mlResult = await buscarNoMl(termos)
+          if (mlResult) {
+            if (!dados.titulo) dados.titulo = mlResult.titulo
+            if (!dados.thumbnail) dados.thumbnail = mlResult.thumbnail
+            if (!dados.preco) { dados.preco = mlResult.preco; dados.preco_original = mlResult.precoOriginal }
+          }
         }
       }
     }
