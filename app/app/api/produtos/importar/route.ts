@@ -388,7 +388,7 @@ export async function POST(request: Request) {
           thumbnail: scraped.thumbnail,
           permalink: url,
           domain_id: '',
-          produto_id_externo: produtoId || `awin_${awinMerchantId || 'manual'}_${Date.now()}`,
+          produto_id_externo: produtoId || `awin_${awinMerchantId || 'manual'}_${Buffer.from(url).toString('base64url').slice(0, 30)}`,
         }
       } catch {
         dados = {
