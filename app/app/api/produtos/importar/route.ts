@@ -4,26 +4,44 @@ import { getMlAccessToken } from '@/lib/ml-auth'
 
 const ML_API = 'https://api.mercadolibre.com'
 
+const AWIN_DOMAINS: Record<string, { id: string; nome: string }> = {
+  'nike.com.br': { id: '17652', nome: 'Nike' },
+  'cea.com.br': { id: '17648', nome: 'C&A' },
+  'centauro.com.br': { id: '17806', nome: 'Centauro' },
+  'carrefour.com.br': { id: '17665', nome: 'Carrefour' },
+  'fastshop.com.br': { id: '17590', nome: 'Fast Shop' },
+  'underarmour.com.br': { id: '18864', nome: 'Under Armour' },
+  'decathlon.com.br': { id: '19296', nome: 'Decathlon' },
+  'asics.com.br': { id: '23659', nome: 'ASICS' },
+  'br.puma.com': { id: '32675', nome: 'PUMA' },
+  'puma.com.br': { id: '32675', nome: 'PUMA' },
+  'lojasrenner.com.br': { id: '70694', nome: 'Renner' },
+  'adidas.com.br': { id: '79926', nome: 'Adidas' },
+  'natura.com.br': { id: '17658', nome: 'Natura' },
+  'boticario.com.br': { id: '17659', nome: 'O Boticário' },
+  'vivara.com.br': { id: '17662', nome: 'Vivara' },
+  'calvinklein.com.br': { id: '100553', nome: 'Calvin Klein' },
+  'lacoste.com.br': { id: '112756', nome: 'Lacoste' },
+}
+
 // ─── Detecta plataforma e extrai ID da URL ───────────────────────────────────
 
-function detectarPlataforma(url: string): { plataforma: string; produtoId: string | null } {
+function detectarPlataforma(url: string): { plataforma: string; produtoId: string | null; awinMerchantId?: string; awinNome?: string } {
   try {
     const u = new URL(url)
     const host = u.hostname.toLowerCase()
+    const hostClean = host.replace(/^www\./, '')
     const path = u.pathname
 
     if (host.includes('mercadolivre') || host.includes('mercadopago') || host.includes('meli')) {
-      // Catalog: /p/MLBxxxxx
       const catalogMatch = path.match(/\/p\/(MLB\d+)/i)
       if (catalogMatch) return { plataforma: 'mercadolivre', produtoId: catalogMatch[1] }
-      // Item: MLB-XXXXXX-xx ou MLBxxxxxxxx
       const itemMatch = path.match(/MLB[- _]?(\d+)/i) || url.match(/MLB[- _]?(\d+)/i)
       if (itemMatch) return { plataforma: 'mercadolivre', produtoId: `MLB${itemMatch[1]}` }
       return { plataforma: 'mercadolivre', produtoId: null }
     }
 
     if (host.includes('shopee')) {
-      // /product/{shopId}/{itemId} ou i.{shopId}.{itemId}
       const m = path.match(/\/product\/(\d+)\/(\d+)/) || url.match(/i\.(\d+)\.(\d+)/)
       if (m) return { plataforma: 'shopee', produtoId: `${m[1]}_${m[2]}` }
       return { plataforma: 'shopee', produtoId: null }
@@ -41,9 +59,31 @@ function detectarPlataforma(url: string): { plataforma: string; produtoId: strin
       return { plataforma: 'aliexpress', produtoId: null }
     }
 
+    const awinMatch = AWIN_DOMAINS[hostClean]
+    if (awinMatch) {
+      return { plataforma: 'awin', produtoId: null, awinMerchantId: awinMatch.id, awinNome: awinMatch.nome }
+    }
+
     return { plataforma: 'outro', produtoId: null }
   } catch {
     return { plataforma: 'outro', produtoId: null }
+  }
+}
+
+// ─── Gera link de afiliado AWIN via Link Builder API ─────────────────────────
+
+async function gerarLinkAwin(merchantId: string, destUrl: string, token: string, publisherId: string): Promise<{ url: string; shortUrl: string } | null> {
+  try {
+    const res = await fetch(`https://api.awin.com/publishers/${publisherId}/linkbuilder/generate?accessToken=${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ advertiserId: parseInt(merchantId), destinationUrl: destUrl, shorten: true }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return { url: data.url || '', shortUrl: data.shortUrl || '' }
+  } catch {
+    return null
   }
 }
 
@@ -232,11 +272,12 @@ export async function POST(request: Request) {
       nicho: nichoOverride,
       link_afiliado,
       apenas_preview,
-      // Permite passar preço diretamente (para automação via Coowork/N8N ou preenchimento manual)
       preco: precoBody,
       preco_original: precoOriginalBody,
-      preco_override,          // alias legado
-      preco_original_override, // alias legado
+      preco_override,
+      preco_original_override,
+      thumbnail: thumbnailOverride,
+      titulo: tituloOverride,
     } = body
 
     const precoManual = Number(precoBody || preco_override) || 0
@@ -244,54 +285,103 @@ export async function POST(request: Request) {
 
     if (!url) return NextResponse.json({ error: 'url é obrigatório' }, { status: 400 })
 
-    const { plataforma, produtoId } = detectarPlataforma(url)
+    let { plataforma, produtoId, awinMerchantId, awinNome } = detectarPlataforma(url)
+
+    if (plataforma === 'outro') {
+      try {
+        const hostClean = new URL(url).hostname.replace(/^www\./, '')
+        const { data: loja } = await supabaseAdmin
+          .from('awin_lojas')
+          .select('merchant_id, nome')
+          .eq('ativo', true)
+          .ilike('url', `%${hostClean}%`)
+          .maybeSingle()
+        if (loja) {
+          plataforma = 'awin'
+          awinMerchantId = loja.merchant_id
+          awinNome = loja.nome
+        }
+      } catch {}
+    }
+
+    let awinInfo: { detectado: boolean; loja?: string; link_afiliado?: string; link_curto?: string } = { detectado: false }
+    let linkAfiliado = link_afiliado || ''
+
+    if (plataforma === 'awin' && awinMerchantId) {
+      const { data: cfg } = await supabaseAdmin
+        .from('config_plataformas')
+        .select('credenciais')
+        .eq('plataforma', 'awin')
+        .maybeSingle()
+
+      const token = cfg?.credenciais?.api_token
+      const publisherId = cfg?.credenciais?.publisher_id || '1778660'
+
+      if (token) {
+        const links = await gerarLinkAwin(awinMerchantId, url, token, publisherId)
+        if (links) {
+          linkAfiliado = links.shortUrl || links.url
+          awinInfo = { detectado: true, loja: awinNome, link_afiliado: links.url, link_curto: links.shortUrl }
+        }
+      }
+    }
 
     let dados: any = null
 
-    // ── Mercado Livre: usa API oficial ──
     if (plataforma === 'mercadolivre' && produtoId) {
       const token = await getMlAccessToken()
       if (!token) return NextResponse.json({ error: 'Token ML não disponível' }, { status: 400 })
       dados = await fetchMlProduto(produtoId, token)
     }
 
-    // ── Outros ou fallback: scraping ──
     if (!dados) {
-      const scraped = await scrapeUrl(url)
-      dados = {
-        titulo: scraped.titulo,
-        preco: scraped.preco,
-        preco_original: scraped.precoOriginal,
-        thumbnail: scraped.thumbnail,
-        permalink: url,
-        domain_id: '',
-        produto_id_externo: produtoId || `manual_${Date.now()}`,
+      try {
+        const scraped = await scrapeUrl(url)
+        dados = {
+          titulo: scraped.titulo,
+          preco: scraped.preco,
+          preco_original: scraped.precoOriginal,
+          thumbnail: scraped.thumbnail,
+          permalink: url,
+          domain_id: '',
+          produto_id_externo: produtoId || `awin_${awinMerchantId || 'manual'}_${Date.now()}`,
+        }
+      } catch {
+        dados = {
+          titulo: '',
+          preco: 0,
+          preco_original: 0,
+          thumbnail: '',
+          permalink: url,
+          domain_id: '',
+          produto_id_externo: `awin_${awinMerchantId || 'manual'}_${Date.now()}`,
+        }
       }
     }
 
-    // Título vazio = falha total; preço 0 é aceitável (usuário preenche manualmente)
-    if (!dados?.titulo) {
-      return NextResponse.json({ error: 'Não foi possível obter informações do produto nesta URL. Tente com o link direto da plataforma (ex: shopee.com.br/produto/...).' }, { status: 422 })
-    }
-
-    // Aplica preços manuais/automação se fornecidos (têm prioridade sobre scraping)
+    if (tituloOverride) dados.titulo = tituloOverride
+    if (thumbnailOverride) dados.thumbnail = thumbnailOverride
     if (precoManual > 0) dados.preco = precoManual
     if (precoOrigManual > 0) dados.preco_original = precoOrigManual
+
+    if (!dados?.titulo && plataforma !== 'awin') {
+      return NextResponse.json({ error: 'Não foi possível obter informações do produto nesta URL.' }, { status: 422 })
+    }
 
     const desconto = dados.preco_original > dados.preco && dados.preco > 0
       ? Math.round(((dados.preco_original - dados.preco) / dados.preco_original) * 100)
       : 0
 
-    const nicho = nichoOverride || inferirNicho(dados.titulo)
+    const nicho = nichoOverride || (dados.titulo ? inferirNicho(dados.titulo) : 'moda')
 
     const produto = {
-      titulo: dados.titulo,
+      titulo: dados.titulo || '',
       preco: dados.preco,
       preco_original: dados.preco_original || dados.preco,
       desconto_percent: desconto,
       plataforma,
-      link_original: dados.permalink || url,
-      link_afiliado: link_afiliado || dados.permalink || url,
+      link_original: url,
+      link_afiliado: linkAfiliado || url,
       thumbnail: dados.thumbnail || '',
       nicho,
       produto_id_externo: dados.produto_id_externo,
@@ -299,14 +389,17 @@ export async function POST(request: Request) {
       qtd_vendida: 0,
       ativo: true,
       updated_at: new Date().toISOString(),
+      ...(awinNome && { loja_nome: awinNome }),
     }
 
-    // Se for apenas preview, retorna sem salvar
     if (apenas_preview) {
-      return NextResponse.json({ preview: produto })
+      return NextResponse.json({ preview: produto, awin_info: awinInfo })
     }
 
-    // Salva no banco
+    if (!produto.titulo) {
+      return NextResponse.json({ error: 'Titulo é obrigatório. Preencha manualmente.' }, { status: 422 })
+    }
+
     const { data: salvo, error } = await supabaseAdmin
       .from('produtos')
       .upsert(produto, { onConflict: 'produto_id_externo', ignoreDuplicates: false })
@@ -315,7 +408,7 @@ export async function POST(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    return NextResponse.json({ ok: true, produto: { ...produto, id: salvo?.id } })
+    return NextResponse.json({ ok: true, produto: { ...produto, id: salvo?.id }, awin_info: awinInfo })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
