@@ -85,51 +85,67 @@ async function buscarProdutos(
   idsJaDisparados: Set<string>,
   titulosJaDisparados: Set<string>
 ): Promise<{ produtos: any[]; nichosUsados: string[]; ultimoNichoIdx: number }> {
+  // Busca todos os produtos elegíveis de uma vez (todas plataformas e nichos)
+  const { data: todosML } = await supabaseAdmin
+    .from('produtos')
+    .select('*')
+    .eq('ativo', true)
+    .in('plataforma', ['mercadolivre', 'lomadee', 'awin'])
+    .gte('desconto_percent', config.desconto_minimo_ml)
+    .order('desconto_percent', { ascending: false })
+    .limit(100)
+
+  const { data: todosShopee } = await supabaseAdmin
+    .from('produtos')
+    .select('*')
+    .eq('ativo', true)
+    .eq('plataforma', 'shopee')
+    .gte('score', config.score_minimo_shopee)
+    .order('score', { ascending: false })
+    .limit(50)
+
+  const todosCandidatos = [...(todosML || []), ...(todosShopee || [])]
+
+  // Filtra já disparados
+  const disponiveis = todosCandidatos.filter(p =>
+    !idsJaDisparados.has(p.id) &&
+    !titulosJaDisparados.has((p.titulo || '').toLowerCase().trim())
+  )
+
+  // Fase 1: pega 1 por nicho (variedade) — começa pelo nichoIdx
   const produtos: any[] = []
   const nichosUsados: string[] = []
-  let idx = nichoIdx
+  const usados = new Set<string>()
 
-  for (let tentativa = 0; tentativa < TODOS_NICHOS.length * 2 && produtos.length < quantidade; tentativa++) {
-    const nicho = TODOS_NICHOS[idx % TODOS_NICHOS.length]
+  const nichoOrder = [...TODOS_NICHOS.slice(nichoIdx), ...TODOS_NICHOS.slice(0, nichoIdx)]
 
-    for (const plataforma of ['mercadolivre', 'shopee', 'lomadee', 'awin'] as const) {
-      if (produtos.length >= quantidade) break
-
-      let query = supabaseAdmin
-        .from('produtos')
-        .select('*')
-        .eq('ativo', true)
-        .eq('plataforma', plataforma)
-        .eq('nicho', nicho)
-        .limit(20)
-
-      if (plataforma === 'shopee') {
-        query = query.gte('score', config.score_minimo_shopee).order('score', { ascending: false })
-      } else {
-        query = query.gte('desconto_percent', config.desconto_minimo_ml).order('desconto_percent', { ascending: false })
-      }
-
-      const { data: candidatos } = await query
-
-      if (candidatos?.length) {
-        const disponiveis = candidatos.filter(p =>
-          !idsJaDisparados.has(p.id) &&
-          !produtos.some(pp => pp.id === p.id) &&
-          !titulosJaDisparados.has((p.titulo || '').toLowerCase().trim())
-        )
-        if (disponiveis.length > 0) {
-          produtos.push(disponiveis[0])
-          idsJaDisparados.add(disponiveis[0].id)
-          titulosJaDisparados.add((disponiveis[0].titulo || '').toLowerCase().trim())
-          if (!nichosUsados.includes(nicho)) nichosUsados.push(nicho)
-        }
-      }
+  for (const nicho of nichoOrder) {
+    if (produtos.length >= quantidade) break
+    const doNicho = disponiveis.find(p => p.nicho === nicho && !usados.has(p.id))
+    if (doNicho) {
+      produtos.push(doNicho)
+      usados.add(doNicho.id)
+      if (!nichosUsados.includes(nicho)) nichosUsados.push(nicho)
     }
-
-    idx++
   }
 
-  return { produtos, nichosUsados, ultimoNichoIdx: idx % TODOS_NICHOS.length }
+  // Fase 2: preenche o resto com os melhores descontos disponíveis
+  for (const p of disponiveis) {
+    if (produtos.length >= quantidade) break
+    if (usados.has(p.id)) continue
+    produtos.push(p)
+    usados.add(p.id)
+    if (!nichosUsados.includes(p.nicho)) nichosUsados.push(p.nicho)
+  }
+
+  // Embaralha pra não mandar sempre na mesma ordem
+  for (let i = produtos.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [produtos[i], produtos[j]] = [produtos[j], produtos[i]]
+  }
+
+  const ultimoNichoIdx = (nichoIdx + nichosUsados.length) % TODOS_NICHOS.length
+  return { produtos, nichosUsados, ultimoNichoIdx }
 }
 
 function randomInt(min: number, max: number): number {
