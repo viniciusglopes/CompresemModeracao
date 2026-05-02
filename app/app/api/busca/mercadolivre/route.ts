@@ -343,7 +343,7 @@ export async function POST(request: Request) {
 
     const { data: salvos, error } = await supabaseAdmin
       .from('produtos')
-      .upsert(produtos, { onConflict: 'produto_id_externo', ignoreDuplicates: false })
+      .upsert(produtos, { onConflict: 'produto_id_externo,plataforma', ignoreDuplicates: false })
       .select('id')
 
     if (error) {
