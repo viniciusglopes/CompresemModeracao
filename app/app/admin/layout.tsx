@@ -17,8 +17,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-gray-50 flex">
       <AdminSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b px-4 md:px-6 py-2.5 flex items-center justify-between shrink-0">
+      <div className="flex-1 flex flex-col overflow-hidden relative z-10">
+        <header className="bg-white border-b px-4 md:px-6 py-2.5 flex items-center justify-end shrink-0">
           {/* Espaço para o botão hamburger no mobile */}
           <div className="w-8 md:hidden" />
           <AdminNotificacoes />
