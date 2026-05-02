@@ -466,7 +466,7 @@ export async function POST(request: Request) {
 
     const { data: salvo, error } = await supabaseAdmin
       .from('produtos')
-      .upsert(produto, { onConflict: 'produto_id_externo', ignoreDuplicates: false })
+      .upsert(produto, { onConflict: 'produto_id_externo,plataforma', ignoreDuplicates: false })
       .select('id')
       .single()
 
