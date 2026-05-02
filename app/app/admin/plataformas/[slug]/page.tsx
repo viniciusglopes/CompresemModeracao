@@ -340,6 +340,50 @@ export default function PlataformaPage() {
 
         <Card>
           <CardHeader>
+            <CardTitle className="text-base">⚙️ Regras de Busca</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>Desconto mínimo (%)</Label>
+              <Input
+                type="number"
+                value={campos['desconto_minimo'] ?? '10'}
+                onChange={e => setCampos(prev => ({ ...prev, desconto_minimo: e.target.value }))}
+                min={0} max={100}
+                placeholder="10"
+              />
+              <p className="text-[10px] text-gray-400">Só envia produtos com desconto igual ou maior que este valor</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Score mínimo</Label>
+              <Input
+                type="number"
+                value={campos['score_minimo'] ?? '30'}
+                onChange={e => setCampos(prev => ({ ...prev, score_minimo: e.target.value }))}
+                min={0} max={100}
+                placeholder="30"
+              />
+              <p className="text-[10px] text-gray-400">Score de relevância mínimo para o produto ser considerado</p>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Preço máximo (R$)</Label>
+              <Input
+                type="number"
+                value={campos['preco_max'] ?? '0'}
+                onChange={e => setCampos(prev => ({ ...prev, preco_max: e.target.value }))}
+                min={0}
+                placeholder="0 = sem limite"
+              />
+              <p className="text-[10px] text-gray-400">0 = sem limite de preço</p>
+            </div>
+            <Button onClick={handleSave} disabled={saving} className="w-full bg-rose-500 hover:bg-rose-600" size="sm">
+              {saving ? 'Salvando...' : '💾 Salvar regras'}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle className="text-base">📋 Endpoints Disponíveis</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
