@@ -36,7 +36,7 @@ export default function ProdutosPage() {
   const [nichoFiltro, setNichoFiltro] = useState('')
   const [plataformaFiltro, setPlataformaFiltro] = useState('')
   const [nichoBusca, setNichoBusca] = useState('eletronicos')
-  const [plataformaBusca, setPlataformaBusca] = useState<'mercadolivre' | 'shopee' | 'lomadee'>('mercadolivre')
+  const [plataformaBusca, setPlataformaBusca] = useState<'mercadolivre' | 'shopee' | 'lomadee' | 'awin'>('mercadolivre')
   const [msg, setMsg] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
   const [stats, setStats] = useState<{ total: number; salvos?: number } | null>(null)
 
@@ -55,14 +55,15 @@ export default function ProdutosPage() {
       if (nichoFiltro) params.set('nicho', nichoFiltro)
       // Se sem filtro de plataforma, busca ambas
       if (!plataformaFiltro) {
-        const [r1, r2, r3] = await Promise.all([
+        const [r1, r2, r3, r4] = await Promise.all([
           fetch(`/api/busca/mercadolivre?plataforma=mercadolivre&limit=100`).then(r => r.json()),
           fetch(`/api/busca/shopee?limit=100`).then(r => r.json()),
           fetch(`/api/busca/lomadee?limit=100`).then(r => r.json()),
+          fetch(`/api/busca/awin?limit=100`).then(r => r.json()),
         ])
-        setProdutos([...(r1.produtos || []), ...(r2.produtos || []), ...(r3.produtos || [])])
+        setProdutos([...(r1.produtos || []), ...(r2.produtos || []), ...(r3.produtos || []), ...(r4.produtos || [])])
       } else {
-        const endpointMap: Record<string, string> = { shopee: '/api/busca/shopee', lomadee: '/api/busca/lomadee', mercadolivre: '/api/busca/mercadolivre' }
+        const endpointMap: Record<string, string> = { shopee: '/api/busca/shopee', lomadee: '/api/busca/lomadee', awin: '/api/busca/awin', mercadolivre: '/api/busca/mercadolivre' }
         const endpoint = endpointMap[plataforma] || '/api/busca/mercadolivre'
         const res = await fetch(`${endpoint}?${params}`)
         const data = await res.json()
@@ -80,11 +81,11 @@ export default function ProdutosPage() {
   const handleBuscar = async () => {
     setBuscando(true)
     const nichoLabel = nichos.find(n => n.id === nichoBusca)?.label || nichoBusca
-    const plataformaLabels: Record<string, string> = { shopee: 'Shopee', lomadee: 'Lomadee', mercadolivre: 'Mercado Livre' }
+    const plataformaLabels: Record<string, string> = { shopee: 'Shopee', lomadee: 'Lomadee', awin: 'AWIN', mercadolivre: 'Mercado Livre' }
     const plataformaLabel = plataformaLabels[plataformaBusca] || 'Mercado Livre'
     setMsg({ type: 'info', text: `Buscando "${nichoLabel}" no ${plataformaLabel}...` })
     try {
-      const buscarEndpointMap: Record<string, string> = { shopee: '/api/busca/shopee', lomadee: '/api/busca/lomadee', mercadolivre: '/api/busca/mercadolivre' }
+      const buscarEndpointMap: Record<string, string> = { shopee: '/api/busca/shopee', lomadee: '/api/busca/lomadee', awin: '/api/busca/awin', mercadolivre: '/api/busca/mercadolivre' }
       const endpoint = buscarEndpointMap[plataformaBusca] || '/api/busca/mercadolivre'
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -130,6 +131,7 @@ export default function ProdutosPage() {
               { id: 'mercadolivre', label: '🛒 Mercado Livre' },
               { id: 'shopee', label: '🧡 Shopee' },
               { id: 'lomadee', label: '🏬 Lomadee' },
+              { id: 'awin', label: '🌐 AWIN' },
             ].map(p => (
               <button key={p.id} onClick={() => setPlataformaBusca(p.id as any)}
                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
@@ -187,6 +189,8 @@ export default function ProdutosPage() {
           { id: '', label: '🔀 Todas as plataformas' },
           { id: 'mercadolivre', label: '🛒 Mercado Livre' },
           { id: 'shopee', label: '🧡 Shopee' },
+          { id: 'lomadee', label: '🏬 Lomadee' },
+          { id: 'awin', label: '🌐 AWIN' },
         ].map(p => (
           <button key={p.id} onClick={() => setPlataformaFiltro(p.id)}
             className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
@@ -256,8 +260,10 @@ export default function ProdutosPage() {
                           {nichoInfo.emoji} {nichoInfo.label}
                         </Badge>
                       )}
-                      <Badge variant="outline" className={`text-xs ${p.plataforma === 'shopee' ? 'border-rose-300 text-rose-600' : 'border-yellow-300 text-yellow-700'}`}>
-                        {p.plataforma === 'shopee' ? '🧡 Shopee' : '🛒 ML'}
+                      <Badge variant="outline" className={`text-xs ${
+                        ({ mercadolivre: 'border-yellow-300 text-yellow-700', shopee: 'border-rose-300 text-rose-600', lomadee: 'border-green-300 text-green-700', awin: 'border-purple-300 text-purple-700' } as Record<string, string>)[p.plataforma] || 'border-gray-300 text-gray-600'
+                      }`}>
+                        {({ mercadolivre: '🛒 ML', shopee: '🧡 Shopee', lomadee: '🏬 Lomadee', awin: '🌐 AWIN' } as Record<string, string>)[p.plataforma] || p.plataforma}
                       </Badge>
                     </div>
                     {p.qtd_vendida > 0 && (

@@ -29,7 +29,12 @@ const PLATAFORMAS = [
   { id: '', label: 'Todas' },
   { id: 'mercadolivre', label: '🛒 ML' },
   { id: 'shopee', label: '🧡 Shopee' },
+  { id: 'lomadee', label: '🏬 Lomadee' },
+  { id: 'awin', label: '🌐 AWIN' },
 ]
+
+const platIcons: Record<string, string> = { mercadolivre: '🛒 ML', shopee: '🧡 Shopee', lomadee: '🏬 Lomadee', awin: '🌐 AWIN' }
+const platColors: Record<string, string> = { mercadolivre: 'border-yellow-300 text-yellow-700', shopee: 'border-rose-300 text-rose-600', lomadee: 'border-green-300 text-green-700', awin: 'border-purple-300 text-purple-700' }
 
 export default function OfertasPage() {
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -64,13 +69,15 @@ export default function OfertasPage() {
     setLoading(true)
     try {
       // Carrega produtos e disparos em paralelo
-      const [r1, r2, r3] = await Promise.all([
+      const [r1, r2, r3, r4, r5] = await Promise.all([
         fetch('/api/busca/mercadolivre?plataforma=mercadolivre&limit=200').then(r => r.json()),
         fetch('/api/busca/shopee?limit=200').then(r => r.json()),
         fetch('/api/disparos?limit=500').then(r => r.json()),
+        fetch('/api/busca/lomadee?limit=200').then(r => r.json()),
+        fetch('/api/busca/awin?limit=200').then(r => r.json()),
       ])
 
-      let todos: Produto[] = [...(r1.produtos || []), ...(r2.produtos || [])]
+      let todos: Produto[] = [...(r1.produtos || []), ...(r2.produtos || []), ...(r4.produtos || []), ...(r5.produtos || [])]
 
       // Filtra por data De/Até
       if (dataInicio) {
@@ -422,8 +429,8 @@ export default function OfertasPage() {
                       }`} title={p.score_detalhes ? Object.entries(p.score_detalhes).map(([k,v]) => `${k}:${v}`).join(' ') : ''}>
                         {(p.score || 0) >= 60 ? '🏆' : (p.score || 0) >= 40 ? '👍' : '📊'} {p.score || 0}pts
                       </Badge>
-                      <Badge variant="outline" className="text-xs px-1.5 py-0 text-gray-500">
-                        {p.plataforma === 'shopee' ? '🧡' : '🛒'} {nichoInfo?.emoji} {nichoInfo?.label}
+                      <Badge variant="outline" className={`text-xs px-1.5 py-0 ${platColors[p.plataforma] || 'text-gray-500'}`}>
+                        {platIcons[p.plataforma] || p.plataforma} {nichoInfo?.emoji} {nichoInfo?.label}
                       </Badge>
                     </div>
                     <p className="text-xs text-gray-400 mt-1">🕐 {dataFormatada}</p>
@@ -463,7 +470,7 @@ export default function OfertasPage() {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 line-clamp-2 leading-snug">{editando.titulo}</p>
                 <p className="text-xs text-gray-400 mt-1">
-                  {editando.plataforma === 'shopee' ? '🧡' : '🛒'} {editando.plataforma} ·{' '}
+                  {platIcons[editando.plataforma] || editando.plataforma} ·{' '}
                   Categoria atual: <span className="text-rose-600 font-medium">
                     {nichos.find(n => n.id === editando.nicho)?.emoji} {nichos.find(n => n.id === editando.nicho)?.label || editando.nicho}
                   </span>

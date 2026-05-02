@@ -35,6 +35,8 @@ const PLATAFORMAS = [
   { id: 'shopee', label: '🧡 Shopee' },
   { id: 'aliexpress', label: '🔴 AliExpress' },
   { id: 'amazon', label: '📦 Amazon' },
+  { id: 'lomadee', label: '🏬 Lomadee' },
+  { id: 'awin', label: '🌐 AWIN' },
 ]
 
 const STATUS_OPTS = [
@@ -118,6 +120,8 @@ export default function LogsPage() {
     if (p === 'shopee') return '🧡'
     if (p === 'aliexpress') return '🔴'
     if (p === 'amazon') return '📦'
+    if (p === 'lomadee') return '🏬'
+    if (p === 'awin') return '🌐'
     return '🔌'
   }
 
