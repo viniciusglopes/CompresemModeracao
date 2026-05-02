@@ -171,12 +171,15 @@ async function fetchHtml(url: string, ua: string): Promise<string> {
 }
 
 async function scrapeUrl(url: string) {
-  // Tenta com UA do Facebook primeiro (força SSR/OG em SPAs), depois Chrome
   let html = ''
   try {
     html = await fetchHtml(url, 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)')
   } catch {
-    html = await fetchHtml(url, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+    try {
+      html = await fetchHtml(url, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+    } catch {
+      html = await fetchHtml(`https://web.archive.org/web/2024/${url}`, 'Mozilla/5.0')
+    }
   }
 
   const meta = (name: string) => {
@@ -233,7 +236,11 @@ async function scrapeUrl(url: string) {
     if (m2) { preco = parseFloat(m2[1].replace(',', '.')); precoOriginal = preco }
   }
 
-  return { titulo, thumbnail: typeof thumbnail === 'string' ? thumbnail : '', preco, precoOriginal }
+  let thumbClean = typeof thumbnail === 'string' ? thumbnail : ''
+  const archiveMatch = thumbClean.match(/web\.archive\.org\/web\/\d+im_\/(https?:\/\/.+)/)
+  if (archiveMatch) thumbClean = archiveMatch[1]
+
+  return { titulo, thumbnail: thumbClean, preco, precoOriginal }
 }
 
 // ─── Fallback: busca produto no ML quando scraping falha ─────────────────────
