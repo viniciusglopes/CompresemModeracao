@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getMlAccessToken } from '@/lib/ml-auth'
 
@@ -396,7 +397,7 @@ export async function POST(request: Request) {
           thumbnail: scraped.thumbnail,
           permalink: url,
           domain_id: '',
-          produto_id_externo: produtoId || `awin_${awinMerchantId || 'manual'}_${Buffer.from(url).toString('base64url').slice(0, 30)}`,
+          produto_id_externo: produtoId || `awin_${awinMerchantId || 'manual'}_${createHash('sha256').update(url).digest('hex').slice(0, 16)}`,
         }
       } catch {
         dados = {
@@ -406,7 +407,7 @@ export async function POST(request: Request) {
           thumbnail: '',
           permalink: url,
           domain_id: '',
-          produto_id_externo: `awin_${awinMerchantId || 'manual'}_${Date.now()}`,
+          produto_id_externo: `awin_${awinMerchantId || 'manual'}_${createHash('sha256').update(url).digest('hex').slice(0, 16)}`,
         }
       }
 

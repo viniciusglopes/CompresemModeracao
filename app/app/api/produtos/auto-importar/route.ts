@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createHash } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase'
 
 const AWIN_STORES: Record<string, { merchantId: string; tipo: 'vtex' | 'scrape'; dominio: string; categorias: string[] }> = {
@@ -164,7 +165,7 @@ export async function POST(request: Request) {
         const awinLink = await gerarLinkAwin(prod.merchantId, prod.link, awinToken, publisherId)
         const linkAfiliado = awinLink?.shortUrl || awinLink?.url || prod.link
 
-        const produtoId = `awin_${prod.merchantId}_${Buffer.from(prod.link).toString('base64url').slice(0, 30)}`
+        const produtoId = `awin_${prod.merchantId}_${createHash('sha256').update(prod.link).digest('hex').slice(0, 16)}`
 
         const registro = {
           titulo: prod.titulo,
