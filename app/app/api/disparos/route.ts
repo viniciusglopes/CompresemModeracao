@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     // Busca produtos
     const { data: produtos, error: prodErr } = await supabaseAdmin
       .from('produtos')
-      .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, nicho, frete_gratis')
+      .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, nicho, frete_gratis, loja_nome')
       .in('id', produto_ids)
 
     if (prodErr) return NextResponse.json({ error: prodErr.message }, { status: 500 })

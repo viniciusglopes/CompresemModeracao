@@ -7,6 +7,7 @@ const TODOS_NICHOS = [
   'moda', 'moda_masc', 'beleza', 'casa', 'esportes', 'bebes', 'pet', 'ferramentas',
   'audio_video', 'cameras', 'calcados', 'casa_moveis', 'brinquedos',
   'veiculos_acess', 'livros', 'saude', 'alimentos', 'musica', 'pet_shop',
+  'joias', 'relogios',
 ]
 
 interface DisparoConfig {
@@ -91,7 +92,7 @@ async function buscarProdutos(
   for (let tentativa = 0; tentativa < TODOS_NICHOS.length * 2 && produtos.length < quantidade; tentativa++) {
     const nicho = TODOS_NICHOS[idx % TODOS_NICHOS.length]
 
-    for (const plataforma of ['mercadolivre', 'shopee', 'lomadee'] as const) {
+    for (const plataforma of ['mercadolivre', 'shopee', 'lomadee', 'awin'] as const) {
       if (produtos.length >= quantidade) break
 
       let query = supabaseAdmin
@@ -102,10 +103,10 @@ async function buscarProdutos(
         .eq('nicho', nicho)
         .limit(20)
 
-      if (plataforma === 'mercadolivre' || plataforma === 'lomadee') {
-        query = query.gte('desconto_percent', config.desconto_minimo_ml).order('desconto_percent', { ascending: false })
-      } else {
+      if (plataforma === 'shopee') {
         query = query.gte('score', config.score_minimo_shopee).order('score', { ascending: false })
+      } else {
+        query = query.gte('desconto_percent', config.desconto_minimo_ml).order('desconto_percent', { ascending: false })
       }
 
       const { data: candidatos } = await query

@@ -13,6 +13,7 @@ interface Produto {
   thumbnail: string
   nicho: string
   frete_gratis: boolean
+  loja_nome?: string
 }
 
 interface Grupo {
@@ -153,6 +154,7 @@ async function formatarMensagemTelegram(produto: Produto, abertura: string): Pro
     amazon: '📦 Amazon',
     aliexpress: '🔴 AliExpress',
     lomadee: '🏬 Oferta Parceiro',
+    awin: '🏪 ' + (produto.loja_nome || 'Loja Parceira'),
   }
   msg += `\n🏪 ${plataformaEmoji[produto.plataforma] || produto.plataforma}\n`
   msg += `\n👉 <a href="${link}">Comprar agora</a>`
@@ -185,6 +187,7 @@ async function formatarMensagemWhatsApp(produto: Produto, abertura: string): Pro
     amazon: '📦 Amazon',
     aliexpress: '🔴 AliExpress',
     lomadee: '🏬 Oferta Parceiro',
+    awin: '🏪 ' + (produto.loja_nome || 'Loja Parceira'),
   }
   msg += `\n🏪 ${plataformaEmoji[produto.plataforma] || produto.plataforma}\n`
   msg += `\n👉 ${link}`
