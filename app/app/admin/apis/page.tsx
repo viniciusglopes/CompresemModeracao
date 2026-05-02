@@ -294,6 +294,60 @@ const PLATAFORMAS: Record<string, Platform> = {
       'Multi-loja: campo seller.name indica a loja (Americanas, Casas Bahia, etc.)',
       'Cadastro: lomadee.com | Docs: docs.lomadee.com.br',
     ]
+  },
+
+  awin: {
+    nome: 'AWIN',
+    icon: '🌐',
+    cor: 'purple',
+    descricao: 'Rede global de afiliados com +25.000 anunciantes. API REST com OAuth2 Bearer Token.',
+    base_url: 'https://api.awin.com',
+    docs_url: 'https://wiki.awin.com/index.php/Publisher_API',
+    auth_tipo: 'OAuth2 Bearer Token (header Authorization)',
+    credenciais: ['OAuth2 Token', 'Publisher ID (Affiliate ID)'],
+    secoes: [
+      {
+        title: 'Conta e Programas',
+        endpoints: [
+          { method: 'GET', path: '/accounts', desc: 'Lista contas e IDs do publisher', status: 'auth' as ApiStatus },
+          { method: 'GET', path: '/publishers/{publisherId}/programmes', desc: 'Programas de afiliados ativos/pendentes', status: 'auth' as ApiStatus },
+          { method: 'GET', path: '/publishers/{publisherId}/programmes/{programmeId}', desc: 'Detalhe de um programa', status: 'auth' as ApiStatus },
+          { method: 'GET', path: '/publishers/{publisherId}/commissiongroups', desc: 'Grupos de comissão por programa', status: 'auth' as ApiStatus },
+        ]
+      },
+      {
+        title: 'Transações e Relatórios',
+        endpoints: [
+          { method: 'GET', path: '/publishers/{publisherId}/transactions/', desc: 'Transações (comissões) por período', status: 'auth' as ApiStatus, obs: 'Params: startDate, endDate, timezone. Formato: yyyy-MM-ddTHH:mm:ss' },
+          { method: 'GET', path: '/publishers/{publisherId}/reports/advertiser', desc: 'Relatório por anunciante', status: 'auth' as ApiStatus },
+          { method: 'GET', path: '/publishers/{publisherId}/reports/creative', desc: 'Relatório por criativo/banner', status: 'auth' as ApiStatus },
+        ]
+      },
+      {
+        title: 'Busca de Produtos (Product Feed)',
+        endpoints: [
+          { method: 'POST', path: '/publishers/{publisherId}/product-search', desc: 'Busca produtos no feed de anunciantes', status: 'affiliate' as ApiStatus, obs: 'Body: { keyword, advertiserId, category, minPrice, maxPrice }' },
+          { method: 'GET', path: '/publishers/{publisherId}/product-feeds', desc: 'Lista feeds de produtos disponíveis', status: 'auth' as ApiStatus },
+          { method: 'GET', path: '/publishers/{publisherId}/product-feeds/{feedId}/products', desc: 'Produtos de um feed específico', status: 'auth' as ApiStatus },
+        ]
+      },
+      {
+        title: 'Links e Criativos',
+        endpoints: [
+          { method: 'GET', path: '/publishers/{publisherId}/linkbuilder', desc: 'Gerar link de afiliado (deeplink)', status: 'affiliate' as ApiStatus, obs: 'Params: advertiserId, url. Retorna link tracked.' },
+          { method: 'GET', path: '/publishers/{publisherId}/creatives', desc: 'Banners e criativos disponíveis', status: 'auth' as ApiStatus },
+          { method: 'GET', path: '/publishers/{publisherId}/promotions', desc: 'Promoções/cupons ativos', status: 'affiliate' as ApiStatus },
+        ]
+      },
+    ],
+    observacoes: [
+      'Autenticação: header "Authorization: Bearer {oauth2_token}" em todos os requests',
+      'Publisher ID encontrado via GET /accounts (campo accountId onde accountType = publisher)',
+      'Product Search requer que o anunciante tenha feed de produtos ativo no AWIN',
+      'Rate limit: 20 req/min por token — usar throttle nas buscas automáticas',
+      'Link builder: https://www.awin1.com/cread.php?awinmid={merchantId}&awinaffid={publisherId}&ued={encodedUrl}',
+      'Cadastro: ui.awin.com | Wiki: wiki.awin.com | Docs API: wiki.awin.com/index.php/Publisher_API',
+    ]
   }
 }
 
