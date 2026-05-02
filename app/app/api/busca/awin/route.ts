@@ -3,22 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { calcularScore } from '@/lib/score'
 import { logApi } from '@/lib/api-logger'
 
-const AWIN_API = 'https://api.awin.com'
-
-const CATEGORIAS_AWIN: Record<string, { label: string; keywords: string[]; emoji: string }> = {
-  eletronicos:      { label: 'Eletrônicos',              keywords: ['smartphone', 'celular', 'fone bluetooth', 'smartwatch', 'carregador'], emoji: '📱' },
-  informatica:      { label: 'Informática',              keywords: ['notebook', 'mouse gamer', 'teclado', 'monitor', 'ssd'], emoji: '💻' },
-  eletrodomesticos: { label: 'Eletrodomésticos',         keywords: ['fritadeira', 'aspirador', 'liquidificador', 'cafeteira', 'ventilador'], emoji: '🏠' },
-  games:            { label: 'Games',                    keywords: ['playstation', 'xbox', 'nintendo switch', 'headset gamer'], emoji: '🎮' },
-  moda:             { label: 'Moda',                     keywords: ['vestido', 'blusa feminina', 'calça jeans', 'tênis'], emoji: '👗' },
-  beleza:           { label: 'Beleza',                   keywords: ['perfume', 'maquiagem', 'hidratante', 'shampoo'], emoji: '💄' },
-  casa:             { label: 'Casa e Decoração',         keywords: ['luminária', 'cortina', 'tapete', 'organizador'], emoji: '🛋️' },
-  esportes:         { label: 'Esportes',                 keywords: ['tênis corrida', 'halter', 'bicicleta', 'whey protein'], emoji: '⚽' },
-  bebes:            { label: 'Bebês',                    keywords: ['fralda', 'carrinho bebê', 'mamadeira'], emoji: '🍼' },
-  pet:              { label: 'Pet Shop',                 keywords: ['ração cachorro', 'ração gato', 'coleira'], emoji: '🐾' },
-  ferramentas:      { label: 'Ferramentas',              keywords: ['furadeira', 'parafusadeira', 'alicate'], emoji: '🔧' },
-  brinquedos:       { label: 'Brinquedos',               keywords: ['lego', 'boneca', 'quebra-cabeça'], emoji: '🧸' },
-}
+const PUBLISHER_ID = '1778660'
 
 function nichoFromTitulo(titulo: string): string | null {
   const t = titulo.toLowerCase()
@@ -37,19 +22,58 @@ function nichoFromTitulo(titulo: string): string | null {
   return null
 }
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+function gerarDeeplink(merchantId: string, urlProduto: string): string {
+  return `https://www.awin1.com/cread.php?awinmid=${merchantId}&awinaffid=${PUBLISHER_ID}&ued=${encodeURIComponent(urlProduto)}`
+}
+
+function extrairProdutosHtml(html: string, baseUrl: string): Array<{titulo: string, preco: number, precoOriginal: number, url: string, imagem: string}> {
+  const produtos: Array<{titulo: string, preco: number, precoOriginal: number, url: string, imagem: string}> = []
+
+  const productPatterns = [
+    // JSON-LD structured data
+    /"@type"\s*:\s*"Product"[\s\S]*?"name"\s*:\s*"([^"]+)"[\s\S]*?"price"\s*:\s*"?([\d.,]+)"?/g,
+    // Open Graph product tags
+    /<meta\s+property="product:price:amount"\s+content="([\d.,]+)"/g,
+  ]
+
+  // Try JSON-LD first
+  const jsonLdMatches = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)
+  for (const match of jsonLdMatches) {
+    try {
+      const data = JSON.parse(match[1])
+      const items = Array.isArray(data) ? data : [data]
+      for (const item of items) {
+        if (item['@type'] === 'Product' || item['@type'] === 'ItemList') {
+          const prodList = item.itemListElement || [item]
+          for (const p of prodList) {
+            const prod = p.item || p
+            if (prod.name && prod.offers) {
+              const offers = Array.isArray(prod.offers) ? prod.offers[0] : prod.offers
+              const preco = parseFloat(String(offers.price || offers.lowPrice || '0').replace(',', '.'))
+              if (preco > 0) {
+                produtos.push({
+                  titulo: prod.name,
+                  preco,
+                  precoOriginal: parseFloat(String(offers.highPrice || offers.price || '0').replace(',', '.')) || preco,
+                  url: prod.url || '',
+                  imagem: prod.image?.[0] || prod.image || '',
+                })
+              }
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  return produtos.slice(0, 30)
+}
 
 export async function POST(request: Request) {
   const t0 = Date.now()
   try {
     const body = await request.json().catch(() => ({}))
     const limite = Math.min(body.limite || 20, 50)
-    const nicho = body.nicho || 'eletronicos'
-
-    const nichoConfig = CATEGORIAS_AWIN[nicho]
-    if (!nichoConfig) {
-      return NextResponse.json({ error: `Nicho inválido: ${nicho}` }, { status: 400 })
-    }
 
     const { data: cfg } = await supabaseAdmin
       .from('config_plataformas')
@@ -62,82 +86,143 @@ export async function POST(request: Request) {
     }
 
     const token = cfg.credenciais?.api_token
-    const publisherId = cfg.credenciais?.publisher_id
-    if (!token || !publisherId) {
-      return NextResponse.json({ error: 'Token ou Publisher ID não configurados' }, { status: 400 })
+    if (!token) {
+      return NextResponse.json({ error: 'Token AWIN não configurado' }, { status: 400 })
     }
 
-    const keyword = nichoConfig.keywords[Math.floor(Math.random() * nichoConfig.keywords.length)]
-    const url = `${AWIN_API}/publishers/${publisherId}/product-search?keyword=${encodeURIComponent(keyword)}&region=BR&language=pt&minPrice=10&maxPrice=5000`
+    // Busca lojas ativas da tabela awin_lojas
+    const { data: lojas } = await supabaseAdmin
+      .from('awin_lojas')
+      .select('*')
+      .eq('ativo', true)
 
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-      },
-      cache: 'no-store',
-    })
-
-    if (res.status === 429) {
-      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'rate_limit', nicho, duracao_ms: Date.now() - t0, erro: 'Rate limit', request_json: { nicho, keyword }, response_json: { error: 'rate_limit' } })
-      return NextResponse.json({ error: 'Rate limit AWIN. Aguarde.' }, { status: 429 })
-    }
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => res.statusText)
-      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'error', nicho, duracao_ms: Date.now() - t0, erro: `HTTP ${res.status}: ${errText}`, request_json: { nicho, keyword }, response_json: { error: errText } })
-      return NextResponse.json({ error: `AWIN API error: ${res.status}` }, { status: 500 })
-    }
-
-    const data = await res.json()
-    const products = Array.isArray(data) ? data : data.products || data.productList || []
-
-    if (products.length === 0) {
-      const resp = { salvos: 0, total_encontrados: 0, nicho: nichoConfig.label, keyword }
-      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'success', nicho, duracao_ms: Date.now() - t0, total_encontrados: 0, salvos: 0, request_json: { nicho, keyword }, response_json: resp })
+    if (!lojas || lojas.length === 0) {
+      const resp = { salvos: 0, total_encontrados: 0, mensagem: 'Nenhuma loja AWIN ativa' }
+      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'success', duracao_ms: Date.now() - t0, total_encontrados: 0, salvos: 0, request_json: body, response_json: resp })
       return NextResponse.json(resp)
     }
 
-    const produtosParaSalvar = products.slice(0, limite).map((p: any) => {
-      const preco = parseFloat(p.search_price || p.price || p.aw_price || '0')
-      const precoOriginal = parseFloat(p.rrp_price || p.store_price || '0')
-      const temDesconto = precoOriginal > 0 && precoOriginal > preco
-      const descontoPercent = temDesconto ? Math.round(((precoOriginal - preco) / precoOriginal) * 100) : 0
-      const titulo = p.product_name || p.productName || ''
-      const nichoReal = nichoFromTitulo(titulo) || nicho
+    // Lê estado do cron para saber qual loja processar nesta execução
+    const { data: cfgRow } = await supabaseAdmin
+      .from('config_plataformas')
+      .select('credenciais')
+      .eq('plataforma', 'cron_state')
+      .maybeSingle()
+
+    const state = cfgRow?.credenciais || {}
+    const lojaIdx = (state.awin_loja_idx || 0) % lojas.length
+    const loja = lojas[lojaIdx]
+
+    // URLs de promoção comuns
+    const promoUrls = [
+      `${loja.url}/sale`,
+      `${loja.url}/outlet`,
+      `${loja.url}/promocoes`,
+      `${loja.url}/ofertas`,
+      `${loja.url}/promocao`,
+    ]
+
+    let produtosEncontrados: Array<{titulo: string, preco: number, precoOriginal: number, url: string, imagem: string}> = []
+
+    for (const promoUrl of promoUrls) {
+      try {
+        const res = await fetch(promoUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+          },
+          redirect: 'follow',
+          cache: 'no-store',
+        })
+
+        if (res.ok) {
+          const html = await res.text()
+          const prods = extrairProdutosHtml(html, loja.url)
+          if (prods.length > 0) {
+            produtosEncontrados = prods
+            break
+          }
+        }
+      } catch {}
+    }
+
+    // Se não encontrou via promoções, tenta a página principal
+    if (produtosEncontrados.length === 0) {
+      try {
+        const res = await fetch(loja.url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+          redirect: 'follow',
+          cache: 'no-store',
+        })
+        if (res.ok) {
+          const html = await res.text()
+          produtosEncontrados = extrairProdutosHtml(html, loja.url)
+        }
+      } catch {}
+    }
+
+    const produtosParaSalvar = produtosEncontrados.slice(0, limite).map(p => {
+      const temDesconto = p.precoOriginal > p.preco && p.precoOriginal > 0
+      const descontoPercent = temDesconto ? Math.round(((p.precoOriginal - p.preco) / p.precoOriginal) * 100) : 0
+      const nichoReal = nichoFromTitulo(p.titulo) || (loja.categorias?.[0]) || 'moda'
+      const urlProduto = p.url.startsWith('http') ? p.url : `${loja.url}${p.url}`
 
       const { score, detalhes } = calcularScore({
         vendas: 0,
         desconto_percent: descontoPercent,
         rating: 0,
         frete_gratis: false,
-        loja_premium: false,
+        loja_premium: true,
         comissao_percent: 0,
       })
 
       return {
-        titulo,
-        preco,
-        preco_original: temDesconto ? precoOriginal : preco,
+        titulo: p.titulo,
+        preco: p.preco,
+        preco_original: temDesconto ? p.precoOriginal : p.preco,
         desconto_percent: descontoPercent,
         plataforma: 'awin',
-        link_original: p.merchant_deep_link || p.merchantDeepLink || p.aw_deep_link || p.awDeepLink || '',
-        link_afiliado: p.aw_deep_link || p.awDeepLink || p.merchant_deep_link || '',
-        thumbnail: (p.merchant_image_url || p.aw_image_url || p.merchantImageUrl || p.awImageUrl || '').replace('http://', 'https://'),
+        link_original: urlProduto,
+        link_afiliado: gerarDeeplink(loja.merchant_id, urlProduto),
+        thumbnail: (p.imagem || '').replace('http://', 'https://'),
         nicho: nichoReal,
-        produto_id_externo: `awin_${p.aw_product_id || p.product_id || p.productId || Math.random().toString(36).slice(2)}`,
+        produto_id_externo: `awin_${loja.merchant_id}_${Buffer.from(p.titulo).toString('base64').slice(0, 20)}`,
         frete_gratis: false,
         qtd_vendida: 0,
         ativo: true,
         score,
         score_detalhes: detalhes,
+        loja_nome: loja.nome,
         updated_at: new Date().toISOString(),
       }
-    }).filter((p: any) => p.titulo && p.preco > 0)
+    }).filter(p => p.titulo && p.preco > 0)
+
+    // Atualiza índice da loja para próxima execução
+    await supabaseAdmin
+      .from('config_plataformas')
+      .upsert({
+        plataforma: 'cron_state',
+        credenciais: {
+          ...state,
+          awin_loja_idx: (lojaIdx + 1) % lojas.length,
+          awin_last_loja: loja.nome,
+          awin_last_run: new Date().toISOString(),
+        },
+        ativo: false,
+      }, { onConflict: 'plataforma' })
 
     if (produtosParaSalvar.length === 0) {
-      const resp = { salvos: 0, total_encontrados: products.length, nicho: nichoConfig.label, keyword }
-      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'success', nicho, duracao_ms: Date.now() - t0, total_encontrados: products.length, salvos: 0, request_json: { nicho, keyword }, response_json: resp })
+      const resp = {
+        salvos: 0,
+        total_encontrados: produtosEncontrados.length,
+        loja: loja.nome,
+        proxima_loja: lojas[(lojaIdx + 1) % lojas.length]?.nome,
+      }
+      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'success', duracao_ms: Date.now() - t0, total_encontrados: 0, salvos: 0, request_json: { loja: loja.nome }, response_json: resp })
       return NextResponse.json(resp)
     }
 
@@ -147,24 +232,24 @@ export async function POST(request: Request) {
       .select('id')
 
     if (error) {
-      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'error', nicho, duracao_ms: Date.now() - t0, erro: error.message, request_json: { nicho, keyword }, response_json: { error: error.message } })
+      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'error', duracao_ms: Date.now() - t0, erro: error.message, request_json: { loja: loja.nome }, response_json: { error: error.message } })
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
     const qtdSalvos = salvos?.length || produtosParaSalvar.length
     const respData = {
       salvos: qtdSalvos,
-      total_encontrados: products.length,
-      nicho: nichoConfig.label,
-      keyword,
-      produtos: produtosParaSalvar.slice(0, 5).map((p: any) => ({
+      total_encontrados: produtosEncontrados.length,
+      loja: loja.nome,
+      proxima_loja: lojas[(lojaIdx + 1) % lojas.length]?.nome,
+      produtos: produtosParaSalvar.slice(0, 5).map(p => ({
         titulo: p.titulo,
         preco: p.preco,
         desconto: `${p.desconto_percent}%`,
       })),
     }
 
-    await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'success', nicho, duracao_ms: Date.now() - t0, total_encontrados: products.length, salvos: qtdSalvos, request_json: { nicho, keyword }, response_json: respData })
+    await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'success', duracao_ms: Date.now() - t0, total_encontrados: produtosEncontrados.length, salvos: qtdSalvos, request_json: { loja: loja.nome }, response_json: respData })
 
     return NextResponse.json(respData)
   } catch (e: any) {

@@ -24,6 +24,7 @@ const plataformas = [
   { label: 'Amazon', href: '/admin/plataformas/amazon', icon: '📦' },
   { label: 'Lomadee', href: '/admin/plataformas/lomadee', icon: '🏬' },
   { label: 'AWIN', href: '/admin/plataformas/awin', icon: '🌐' },
+  { label: 'Lojas AWIN', href: '/admin/plataformas/awin/lojas', icon: '🏪' },
 ]
 
 export default function AdminSidebar() {
@@ -85,7 +86,7 @@ export default function AdminSidebar() {
                 <Link href={item.href}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors',
-                    pathname === item.href
+                    pathname === item.href || pathname?.startsWith(item.href + '/')
                       ? 'bg-rose-50 text-rose-700 font-medium'
                       : 'text-gray-600 hover:bg-gray-100'
                   )}>
