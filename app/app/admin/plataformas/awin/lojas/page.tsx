@@ -14,6 +14,10 @@ interface AwinLoja {
   url: string
   categorias: string[]
   ativo: boolean
+  desconto_minimo: number
+  score_minimo: number
+  preco_max: number
+  prioridade: number
 }
 
 const CATEGORIA_LABELS: Record<string, string> = {
@@ -66,6 +70,8 @@ export default function AwinLojasPage() {
     setLoading(false)
   }
 
+  const [editando, setEditando] = useState<number | null>(null)
+
   async function toggleLoja(id: number, ativo: boolean) {
     setSaving(id)
     await fetch('/api/awin-lojas', {
@@ -74,6 +80,17 @@ export default function AwinLojasPage() {
       body: JSON.stringify({ id, ativo }),
     })
     setLojas(prev => prev.map(l => l.id === id ? { ...l, ativo } : l))
+    setSaving(null)
+  }
+
+  async function salvarConfig(id: number, campo: string, valor: number) {
+    setSaving(id)
+    await fetch('/api/awin-lojas', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, [campo]: valor }),
+    })
+    setLojas(prev => prev.map(l => l.id === id ? { ...l, [campo]: valor } : l))
     setSaving(null)
   }
 
@@ -211,6 +228,78 @@ export default function AwinLojasPage() {
                     </span>
                   ))}
                 </div>
+
+                <button
+                  onClick={() => setEditando(editando === loja.id ? null : loja.id)}
+                  className="text-xs text-muted-foreground hover:text-foreground mt-3 flex items-center gap-1"
+                >
+                  ⚙️ {editando === loja.id ? 'Fechar config' : 'Regras de disparo'}
+                </button>
+
+                {editando === loja.id && (
+                  <div className="mt-3 pt-3 border-t space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs text-muted-foreground">Desconto mínimo (%)</label>
+                      <input
+                        type="number"
+                        value={loja.desconto_minimo}
+                        onChange={e => {
+                          const v = parseInt(e.target.value) || 0
+                          setLojas(prev => prev.map(l => l.id === loja.id ? { ...l, desconto_minimo: v } : l))
+                        }}
+                        onBlur={e => salvarConfig(loja.id, 'desconto_minimo', parseInt(e.target.value) || 0)}
+                        className="w-16 text-center border rounded px-2 py-1 text-xs"
+                        min={0} max={100}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs text-muted-foreground">Score mínimo</label>
+                      <input
+                        type="number"
+                        value={loja.score_minimo}
+                        onChange={e => {
+                          const v = parseInt(e.target.value) || 0
+                          setLojas(prev => prev.map(l => l.id === loja.id ? { ...l, score_minimo: v } : l))
+                        }}
+                        onBlur={e => salvarConfig(loja.id, 'score_minimo', parseInt(e.target.value) || 0)}
+                        className="w-16 text-center border rounded px-2 py-1 text-xs"
+                        min={0} max={100}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs text-muted-foreground">Preço máximo (R$)</label>
+                      <input
+                        type="number"
+                        value={loja.preco_max}
+                        onChange={e => {
+                          const v = parseFloat(e.target.value) || 0
+                          setLojas(prev => prev.map(l => l.id === loja.id ? { ...l, preco_max: v } : l))
+                        }}
+                        onBlur={e => salvarConfig(loja.id, 'preco_max', parseFloat(e.target.value) || 0)}
+                        className="w-20 text-center border rounded px-2 py-1 text-xs"
+                        min={0}
+                        placeholder="0 = sem limite"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-2">
+                      <label className="text-xs text-muted-foreground">Prioridade (1-10)</label>
+                      <input
+                        type="number"
+                        value={loja.prioridade}
+                        onChange={e => {
+                          const v = parseInt(e.target.value) || 5
+                          setLojas(prev => prev.map(l => l.id === loja.id ? { ...l, prioridade: v } : l))
+                        }}
+                        onBlur={e => salvarConfig(loja.id, 'prioridade', parseInt(e.target.value) || 5)}
+                        className="w-16 text-center border rounded px-2 py-1 text-xs"
+                        min={1} max={10}
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground pt-1">
+                      Prioridade mais alta = scraper visita antes. Desconto/Score mínimo = só dispara se atingir.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}

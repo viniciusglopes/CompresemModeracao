@@ -29,12 +29,14 @@ const PLATAFORMAS = [
   { id: '', label: 'Todas' },
   { id: 'mercadolivre', label: '🛒 ML' },
   { id: 'shopee', label: '🧡 Shopee' },
+  { id: 'aliexpress', label: '🔴 AliExpress' },
+  { id: 'amazon', label: '📦 Amazon' },
   { id: 'lomadee', label: '🏬 Lomadee' },
   { id: 'awin', label: '🌐 AWIN' },
 ]
 
-const platIcons: Record<string, string> = { mercadolivre: '🛒 ML', shopee: '🧡 Shopee', lomadee: '🏬 Lomadee', awin: '🌐 AWIN' }
-const platColors: Record<string, string> = { mercadolivre: 'border-yellow-300 text-yellow-700', shopee: 'border-rose-300 text-rose-600', lomadee: 'border-green-300 text-green-700', awin: 'border-purple-300 text-purple-700' }
+const platIcons: Record<string, string> = { mercadolivre: '🛒 ML', shopee: '🧡 Shopee', aliexpress: '🔴 AliExpress', amazon: '📦 Amazon', lomadee: '🏬 Lomadee', awin: '🌐 AWIN' }
+const platColors: Record<string, string> = { mercadolivre: 'border-yellow-300 text-yellow-700', shopee: 'border-rose-300 text-rose-600', aliexpress: 'border-red-300 text-red-700', amazon: 'border-orange-300 text-orange-700', lomadee: 'border-green-300 text-green-700', awin: 'border-purple-300 text-purple-700' }
 
 export default function OfertasPage() {
   const [produtos, setProdutos] = useState<Produto[]>([])
@@ -69,15 +71,17 @@ export default function OfertasPage() {
     setLoading(true)
     try {
       // Carrega produtos e disparos em paralelo
-      const [r1, r2, r3, r4, r5] = await Promise.all([
+      const [r1, r2, r3, r4, r5, r6, r7] = await Promise.all([
         fetch('/api/busca/mercadolivre?plataforma=mercadolivre&limit=200').then(r => r.json()),
-        fetch('/api/busca/shopee?limit=200').then(r => r.json()),
+        fetch('/api/busca/mercadolivre?plataforma=shopee&limit=200').then(r => r.json()),
         fetch('/api/disparos?limit=500').then(r => r.json()),
-        fetch('/api/busca/lomadee?limit=200').then(r => r.json()),
-        fetch('/api/busca/awin?limit=200').then(r => r.json()),
+        fetch('/api/busca/mercadolivre?plataforma=lomadee&limit=200').then(r => r.json()),
+        fetch('/api/busca/mercadolivre?plataforma=awin&limit=200').then(r => r.json()),
+        fetch('/api/busca/mercadolivre?plataforma=aliexpress&limit=200').then(r => r.json()),
+        fetch('/api/busca/mercadolivre?plataforma=amazon&limit=200').then(r => r.json()),
       ])
 
-      let todos: Produto[] = [...(r1.produtos || []), ...(r2.produtos || []), ...(r4.produtos || []), ...(r5.produtos || [])]
+      let todos: Produto[] = [...(r1.produtos || []), ...(r2.produtos || []), ...(r4.produtos || []), ...(r5.produtos || []), ...(r6.produtos || []), ...(r7.produtos || [])]
 
       // Filtra por data De/Até
       if (dataInicio) {

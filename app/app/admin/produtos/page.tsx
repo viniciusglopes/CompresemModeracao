@@ -36,7 +36,7 @@ export default function ProdutosPage() {
   const [nichoFiltro, setNichoFiltro] = useState('')
   const [plataformaFiltro, setPlataformaFiltro] = useState('')
   const [nichoBusca, setNichoBusca] = useState('eletronicos')
-  const [plataformaBusca, setPlataformaBusca] = useState<'mercadolivre' | 'shopee' | 'lomadee' | 'awin'>('mercadolivre')
+  const [plataformaBusca, setPlataformaBusca] = useState<'mercadolivre' | 'shopee' | 'aliexpress' | 'amazon' | 'lomadee' | 'awin'>('mercadolivre')
   const [msg, setMsg] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
   const [stats, setStats] = useState<{ total: number; salvos?: number } | null>(null)
 
@@ -55,15 +55,17 @@ export default function ProdutosPage() {
       if (nichoFiltro) params.set('nicho', nichoFiltro)
       // Se sem filtro de plataforma, busca ambas
       if (!plataformaFiltro) {
-        const [r1, r2, r3, r4] = await Promise.all([
+        const [r1, r2, r3, r4, r5, r6] = await Promise.all([
           fetch(`/api/busca/mercadolivre?plataforma=mercadolivre&limit=100`).then(r => r.json()),
-          fetch(`/api/busca/shopee?limit=100`).then(r => r.json()),
-          fetch(`/api/busca/lomadee?limit=100`).then(r => r.json()),
-          fetch(`/api/busca/awin?limit=100`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=shopee&limit=100`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=aliexpress&limit=100`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=amazon&limit=100`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=lomadee&limit=100`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=awin&limit=100`).then(r => r.json()),
         ])
-        setProdutos([...(r1.produtos || []), ...(r2.produtos || []), ...(r3.produtos || []), ...(r4.produtos || [])])
+        setProdutos([...(r1.produtos || []), ...(r2.produtos || []), ...(r3.produtos || []), ...(r4.produtos || []), ...(r5.produtos || []), ...(r6.produtos || [])])
       } else {
-        const endpointMap: Record<string, string> = { shopee: '/api/busca/shopee', lomadee: '/api/busca/lomadee', awin: '/api/busca/awin', mercadolivre: '/api/busca/mercadolivre' }
+        const endpointMap: Record<string, string> = { shopee: '/api/busca/mercadolivre?plataforma=shopee', aliexpress: '/api/busca/mercadolivre?plataforma=aliexpress', amazon: '/api/busca/mercadolivre?plataforma=amazon', lomadee: '/api/busca/mercadolivre?plataforma=lomadee', awin: '/api/busca/mercadolivre?plataforma=awin', mercadolivre: '/api/busca/mercadolivre' }
         const endpoint = endpointMap[plataforma] || '/api/busca/mercadolivre'
         const res = await fetch(`${endpoint}?${params}`)
         const data = await res.json()
@@ -81,11 +83,11 @@ export default function ProdutosPage() {
   const handleBuscar = async () => {
     setBuscando(true)
     const nichoLabel = nichos.find(n => n.id === nichoBusca)?.label || nichoBusca
-    const plataformaLabels: Record<string, string> = { shopee: 'Shopee', lomadee: 'Lomadee', awin: 'AWIN', mercadolivre: 'Mercado Livre' }
+    const plataformaLabels: Record<string, string> = { shopee: 'Shopee', aliexpress: 'AliExpress', amazon: 'Amazon', lomadee: 'Lomadee', awin: 'AWIN', mercadolivre: 'Mercado Livre' }
     const plataformaLabel = plataformaLabels[plataformaBusca] || 'Mercado Livre'
     setMsg({ type: 'info', text: `Buscando "${nichoLabel}" no ${plataformaLabel}...` })
     try {
-      const buscarEndpointMap: Record<string, string> = { shopee: '/api/busca/shopee', lomadee: '/api/busca/lomadee', awin: '/api/busca/awin', mercadolivre: '/api/busca/mercadolivre' }
+      const buscarEndpointMap: Record<string, string> = { shopee: '/api/busca/shopee', aliexpress: '/api/busca/aliexpress', amazon: '/api/busca/amazon', lomadee: '/api/busca/lomadee', awin: '/api/busca/awin', mercadolivre: '/api/busca/mercadolivre' }
       const endpoint = buscarEndpointMap[plataformaBusca] || '/api/busca/mercadolivre'
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -130,6 +132,8 @@ export default function ProdutosPage() {
             {[
               { id: 'mercadolivre', label: '🛒 Mercado Livre' },
               { id: 'shopee', label: '🧡 Shopee' },
+              { id: 'aliexpress', label: '🔴 AliExpress' },
+              { id: 'amazon', label: '📦 Amazon' },
               { id: 'lomadee', label: '🏬 Lomadee' },
               { id: 'awin', label: '🌐 AWIN' },
             ].map(p => (
@@ -189,6 +193,8 @@ export default function ProdutosPage() {
           { id: '', label: '🔀 Todas as plataformas' },
           { id: 'mercadolivre', label: '🛒 Mercado Livre' },
           { id: 'shopee', label: '🧡 Shopee' },
+          { id: 'aliexpress', label: '🔴 AliExpress' },
+          { id: 'amazon', label: '📦 Amazon' },
           { id: 'lomadee', label: '🏬 Lomadee' },
           { id: 'awin', label: '🌐 AWIN' },
         ].map(p => (

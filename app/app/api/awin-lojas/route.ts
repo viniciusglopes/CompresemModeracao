@@ -13,13 +13,19 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   const body = await request.json()
-  const { id, ativo } = body
+  const { id, ...fields } = body
 
   if (!id) return NextResponse.json({ error: 'ID obrigatório' }, { status: 400 })
 
+  const allowed = ['ativo', 'desconto_minimo', 'score_minimo', 'preco_max', 'prioridade']
+  const updateData: Record<string, any> = { updated_at: new Date().toISOString() }
+  for (const key of allowed) {
+    if (fields[key] !== undefined) updateData[key] = fields[key]
+  }
+
   const { error } = await supabaseAdmin
     .from('awin_lojas')
-    .update({ ativo, updated_at: new Date().toISOString() })
+    .update(updateData)
     .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
