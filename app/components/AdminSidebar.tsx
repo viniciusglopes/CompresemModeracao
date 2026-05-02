@@ -22,6 +22,8 @@ const plataformas = [
   { label: 'Shopee', href: '/admin/plataformas/shopee', icon: '🧡' },
   { label: 'AliExpress', href: '/admin/plataformas/aliexpress', icon: '🔴' },
   { label: 'Amazon', href: '/admin/plataformas/amazon', icon: '📦' },
+  { label: 'Lomadee', href: '/admin/plataformas/lomadee', icon: '🏬' },
+  { label: 'AWIN', href: '/admin/plataformas/awin', icon: '🌐' },
 ]
 
 export default function AdminSidebar() {

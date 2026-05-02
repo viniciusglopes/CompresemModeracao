@@ -90,6 +90,20 @@ const CONFIG: Record<string, {
       { path: 'GET /affiliate/stores', desc: 'Lista lojas parceiras', status: 'auth' },
     ],
     dica: 'Rede de afiliados com Americanas, Casas Bahia, Renner, C&A e +100 lojas. Crie token em lomadee.com/painel.'
+  },
+  awin: {
+    nome: 'AWIN', icon: '🌐', cor: 'purple',
+    campos: [
+      { id: 'api_token', label: 'OAuth2 Bearer Token', key: 'api_token', type: 'password' },
+      { id: 'publisher_id', label: 'Publisher ID (Affiliate ID)', key: 'publisher_id' },
+    ],
+    endpoints: [
+      { path: 'GET /publishers/{id}/programmes', desc: 'Programas de afiliados ativos', status: 'auth' },
+      { path: 'GET /publishers/{id}/transactions', desc: 'Transações/comissões', status: 'auth' },
+      { path: 'POST /publishers/{id}/product-search', desc: 'Busca produtos do feed', status: 'auth' },
+      { path: 'GET /publishers/{id}/commissiongroups', desc: 'Grupos de comissão', status: 'auth' },
+    ],
+    dica: 'Rede global com +25.000 anunciantes. Gere o OAuth2 Token em ui.awin.com > Account > API Credentials.'
   }
 }
 

@@ -17,8 +17,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ slug
   const body = await request.json()
   const { data, error } = await supabaseAdmin
     .from('config_plataformas')
-    .update({ ...body, updated_at: new Date().toISOString() })
-    .eq('plataforma', slug)
+    .upsert(
+      { plataforma: slug, ...body, updated_at: new Date().toISOString() },
+      { onConflict: 'plataforma' }
+    )
     .select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ success: true, config: data })
