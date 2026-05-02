@@ -22,6 +22,11 @@ const NICHOS_LOMADEE = [
   'calcados', 'casa_moveis', 'brinquedos',
 ]
 
+const NICHOS_AWIN = [
+  'eletronicos', 'informatica', 'eletrodomesticos', 'games',
+  'moda', 'beleza', 'casa', 'esportes', 'bebes', 'pet', 'ferramentas', 'brinquedos',
+]
+
 // Rota de cron — busca 1 nicho por plataforma por execução (rotaciona)
 // Chamado a cada 30min: POST /api/cron/buscar-produtos
 // Protegido por CRON_SECRET env var
@@ -42,19 +47,20 @@ export async function POST(request: Request) {
   const mlIdx = (state.ml_idx || 0) % NICHOS_ML.length
   const shopeeIdx = (state.shopee_idx || 0) % NICHOS_SHOPEE.length
   const lomadeeIdx = (state.lomadee_idx || 0) % NICHOS_LOMADEE.length
+  const awinIdx = (state.awin_idx || 0) % NICHOS_AWIN.length
 
   // Busca plataformas ativas
   const { data: plataformas } = await supabaseAdmin
     .from('config_plataformas')
     .select('plataforma')
     .eq('ativo', true)
-    .in('plataforma', ['mercadolivre', 'shopee', 'lomadee'])
+    .in('plataforma', ['mercadolivre', 'shopee', 'lomadee', 'awin'])
 
   const ativas = (plataformas || []).map(p => p.plataforma)
   const resultados: Record<string, any> = {}
 
-  const nichosMap: Record<string, string[]> = { mercadolivre: NICHOS_ML, shopee: NICHOS_SHOPEE, lomadee: NICHOS_LOMADEE }
-  const idxMap: Record<string, number> = { mercadolivre: mlIdx, shopee: shopeeIdx, lomadee: lomadeeIdx }
+  const nichosMap: Record<string, string[]> = { mercadolivre: NICHOS_ML, shopee: NICHOS_SHOPEE, lomadee: NICHOS_LOMADEE, awin: NICHOS_AWIN }
+  const idxMap: Record<string, number> = { mercadolivre: mlIdx, shopee: shopeeIdx, lomadee: lomadeeIdx, awin: awinIdx }
 
   // Processa 1 nicho por plataforma ativa
   for (const plataforma of ativas) {
@@ -89,6 +95,7 @@ export async function POST(request: Request) {
         ml_idx: (mlIdx + 1) % NICHOS_ML.length,
         shopee_idx: (shopeeIdx + 1) % NICHOS_SHOPEE.length,
         lomadee_idx: (lomadeeIdx + 1) % NICHOS_LOMADEE.length,
+        awin_idx: (awinIdx + 1) % NICHOS_AWIN.length,
         last_run: new Date().toISOString(),
       },
       ativo: false,
