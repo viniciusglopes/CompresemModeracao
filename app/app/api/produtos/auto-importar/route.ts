@@ -117,18 +117,24 @@ async function buscarProdutosVtex(dominio: string, categorias: string[], loja: s
 }
 
 async function gerarLinkAwin(merchantId: string, destUrl: string, token: string, publisherId: string) {
-  try {
-    const res = await fetch(`https://api.awin.com/publishers/${publisherId}/linkbuilder/generate?accessToken=${token}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ advertiserId: parseInt(merchantId), destinationUrl: destUrl, shorten: true }),
-    })
-    if (!res.ok) return null
-    const data = await res.json()
-    return { url: data.url || '', shortUrl: data.shortUrl || '' }
-  } catch {
-    return null
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt))
+      const res = await fetch(`https://api.awin.com/publishers/${publisherId}/linkbuilder/generate?accessToken=${token}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ advertiserId: parseInt(merchantId), destinationUrl: destUrl, shorten: true }),
+        signal: AbortSignal.timeout(10000),
+      })
+      if (res.status === 429) { await new Promise(r => setTimeout(r, 2000)); continue }
+      if (!res.ok) return null
+      const data = await res.json()
+      return { url: data.url || '', shortUrl: data.shortUrl || '' }
+    } catch {
+      continue
+    }
   }
+  return null
 }
 
 export async function POST(request: Request) {
@@ -180,6 +186,7 @@ export async function POST(request: Request) {
       const salvos: any[] = []
 
       for (const prod of produtos) {
+        await new Promise(r => setTimeout(r, 300))
         const awinLink = await gerarLinkAwin(prod.merchantId, prod.link, awinToken, publisherId)
         const linkAfiliado = awinLink?.shortUrl || awinLink?.url || prod.link
 
