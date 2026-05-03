@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
   let query = supabaseAdmin
     .from('produtos')
-    .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, nicho, frete_gratis, created_at')
+    .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, nicho, frete_gratis, loja_nome, created_at')
     .eq('ativo', true)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)

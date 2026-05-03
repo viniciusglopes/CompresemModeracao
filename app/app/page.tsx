@@ -14,6 +14,7 @@ interface Produto {
   thumbnail: string
   nicho: string
   frete_gratis: boolean
+  loja_nome?: string
   created_at: string
 }
 
@@ -355,7 +356,7 @@ export default function HomePage() {
         const economia = p.preco_original - p.preco
         const msgTelegram = encodeURIComponent(`🔥 ${p.titulo}\n💰 ${fmt(p.preco)} (era ${fmt(p.preco_original)}) — ${p.desconto_percent}% OFF\n🔗 ${link}`)
         const msgWhatsapp = encodeURIComponent(`🔥 *${p.titulo}*\n💰 ${fmt(p.preco)} (era ${fmt(p.preco_original)}) — *${p.desconto_percent}% OFF*\n🔗 ${link}`)
-        const plataformaLabel = p.plataforma === 'shopee' ? '🧡 Shopee' : p.plataforma === 'amazon' ? '📦 Amazon' : p.plataforma === 'aliexpress' ? '🔴 AliExpress' : '🛒 Mercado Livre'
+        const plataformaLabel = p.plataforma === 'shopee' ? '🧡 Shopee' : p.plataforma === 'amazon' ? '📦 Amazon' : p.plataforma === 'aliexpress' ? '🔴 AliExpress' : p.plataforma === 'awin' ? '🏪 ' + (p.loja_nome || 'Loja Parceira') : p.plataforma === 'lomadee' ? '🏬 Oferta Parceiro' : '🛒 Mercado Livre'
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setProdutoModal(null)}>
             <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
