@@ -89,13 +89,12 @@ function resolverNicho(domainId: string, titulo: string, nichoFallback: string):
   return nichoFromDomainId(domainId) || nichoFromTitulo(titulo) || nichoFallback
 }
 
-function buildAffiliateLink(url: string, tag: string): string {
+function buildAffiliateLink(url: string, tag: string, word?: string): string {
   if (!tag) return url
   try {
     const u = new URL(url)
-    u.searchParams.set('mt_source', 'aff')
-    u.searchParams.set('mt_medium', 'afiliados')
-    u.searchParams.set('mt_campaign', tag)
+    u.searchParams.set('matt_tool', tag)
+    if (word) u.searchParams.set('matt_word', word)
     return u.toString()
   } catch {
     return url
@@ -268,6 +267,7 @@ export async function POST(request: Request) {
     }
 
     const affiliateTag = cfg?.credenciais?.affiliate_tag || ''
+    const affiliateWord = cfg?.credenciais?.affiliate_word || ''
 
     // Tenta as estratégias em sequência até encontrar produtos com desconto
     let todosItens: any[] = []
@@ -328,7 +328,7 @@ export async function POST(request: Request) {
         desconto_percent: descPercent,
         plataforma: 'mercadolivre',
         link_original: linkOriginal,
-        link_afiliado: buildAffiliateLink(linkOriginal, affiliateTag),
+        link_afiliado: buildAffiliateLink(linkOriginal, affiliateTag, affiliateWord),
         thumbnail: (item.thumbnail || '').replace('http://', 'https://'),
         nicho: nichoReal,
         produto_id_externo: item.id,
