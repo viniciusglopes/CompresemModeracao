@@ -61,7 +61,7 @@ async function saveConfig(config: Partial<DisparoConfig>) {
 
 async function getJaDisparados(): Promise<{ ids: Set<string>; titulos: Set<string> }> {
   const limite = new Date()
-  limite.setHours(limite.getHours() - 48)
+  limite.setHours(limite.getHours() - 24)
 
   const { data } = await supabaseAdmin
     .from('disparos')

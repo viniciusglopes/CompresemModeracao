@@ -7,24 +7,30 @@ const AWIN_STORES: Record<string, { merchantId: string; tipo: 'vtex' | 'scrape';
     merchantId: '17648',
     tipo: 'vtex',
     dominio: 'www.cea.com.br',
-    categorias: ['vestido feminino', 'blusa feminina', 'calça feminina', 'saia', 'tenis feminino', 'bolsa feminina', 'sandalia feminina', 'jaqueta feminina', 'shorts feminino', 'macacão feminino'],
+    categorias: ['vestido feminino', 'blusa feminina', 'calça feminina', 'saia', 'tenis feminino', 'bolsa feminina', 'sandalia feminina', 'jaqueta feminina', 'shorts feminino', 'macacão feminino', 'cropped', 'regata feminina', 'body feminino', 'cardigan feminino', 'pijama feminino', 'lingerie', 'biquini', 'maiô', 'camiseta feminina', 'conjunto feminino'],
   },
   vivara: {
     merchantId: '17662',
     tipo: 'vtex',
     dominio: 'www.vivara.com.br',
-    categorias: ['brinco', 'anel', 'colar', 'pulseira', 'pingente', 'relogio feminino', 'argola', 'berloques'],
+    categorias: ['brinco', 'anel', 'colar', 'pulseira', 'pingente', 'relogio feminino', 'argola', 'berloques', 'aliança', 'bracelete', 'choker', 'tornozeleira', 'conjunto joias'],
   },
   schutz: {
     merchantId: '80302',
     tipo: 'vtex',
     dominio: 'www.schutz.com.br',
-    categorias: ['sandalia', 'tenis', 'scarpin', 'sapatilha', 'bota', 'rasteira', 'mule'],
+    categorias: ['sandalia', 'tenis', 'scarpin', 'sapatilha', 'bota', 'rasteira', 'mule', 'chinelo', 'plataforma', 'tamanco'],
+  },
+  decathlon: {
+    merchantId: '25011',
+    tipo: 'vtex',
+    dominio: 'www.decathlon.com.br',
+    categorias: ['legging feminina', 'tenis feminino corrida', 'top fitness feminino', 'shorts feminino esporte', 'camiseta feminina esportiva', 'mochila feminina', 'bicicleta feminina'],
   },
 }
 
 const MIN_DISCOUNT = 15
-const MAX_PRODUCTS_PER_STORE = 10
+const MAX_PRODUCTS_PER_STORE = 20
 
 interface DiscoveredProduct {
   titulo: string
