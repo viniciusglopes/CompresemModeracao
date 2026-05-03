@@ -111,15 +111,15 @@ Responda APENAS com a linha de abertura, nada mais.`
 
 async function encurtarLink(url: string): Promise<string> {
   try {
-    const res = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(url)}`, {
+    const res = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`, {
       signal: AbortSignal.timeout(5000),
     })
     if (res.ok) {
-      const short = await res.text()
-      if (short.startsWith('https://tinyurl.com/')) return short
+      const short = (await res.text()).trim()
+      if (short.startsWith('https://is.gd/')) return short
     }
   } catch {}
-  return url // fallback: retorna original se falhar
+  return url
 }
 
 // Telegram usa HTML (suporta <b>, <s>, <a>)
