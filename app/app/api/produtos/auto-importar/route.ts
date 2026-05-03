@@ -3,34 +3,46 @@ import { createHash } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase'
 
 const AWIN_STORES: Record<string, { merchantId: string; tipo: 'vtex' | 'scrape'; dominio: string; categorias: string[] }> = {
-  cea: {
+  'C&A': {
     merchantId: '17648',
     tipo: 'vtex',
     dominio: 'www.cea.com.br',
     categorias: ['vestido feminino', 'blusa feminina', 'calça feminina', 'saia', 'tenis feminino', 'bolsa feminina', 'sandalia feminina', 'jaqueta feminina', 'shorts feminino', 'macacão feminino', 'cropped', 'regata feminina', 'body feminino', 'cardigan feminino', 'pijama feminino', 'lingerie', 'biquini', 'maiô', 'camiseta feminina', 'conjunto feminino'],
   },
-  vivara: {
+  'Vivara': {
     merchantId: '17662',
     tipo: 'vtex',
     dominio: 'www.vivara.com.br',
     categorias: ['brinco', 'anel', 'colar', 'pulseira', 'pingente', 'relogio feminino', 'argola', 'berloques', 'aliança', 'bracelete', 'choker', 'tornozeleira', 'conjunto joias'],
   },
-  schutz: {
-    merchantId: '80302',
+  'Under Armour': {
+    merchantId: '18864',
     tipo: 'vtex',
-    dominio: 'www.schutz.com.br',
-    categorias: ['sandalia', 'tenis', 'scarpin', 'sapatilha', 'bota', 'rasteira', 'mule', 'chinelo', 'plataforma', 'tamanco'],
+    dominio: 'www.underarmour.com.br',
+    categorias: ['legging feminina', 'top feminino treino', 'moletom feminino', 'shorts feminino', 'camiseta feminina', 'tênis feminino', 'jaqueta feminina', 'boné feminino', 'sutiã esportivo'],
   },
-  decathlon: {
-    merchantId: '25011',
+  'Mizuno': {
+    merchantId: '51271',
     tipo: 'vtex',
-    dominio: 'www.decathlon.com.br',
-    categorias: ['legging feminina', 'tenis feminino corrida', 'top fitness feminino', 'shorts feminino esporte', 'camiseta feminina esportiva', 'mochila feminina', 'bicicleta feminina'],
+    dominio: 'www.mizuno.com.br',
+    categorias: ['tênis feminino corrida', 'shorts feminino', 'top feminino treino', 'legging feminina', 'camiseta feminina', 'vestido tennis', 'tênis feminino academia'],
+  },
+  'ASICS': {
+    merchantId: '23659',
+    tipo: 'vtex',
+    dominio: 'www.asics.com.br',
+    categorias: ['tênis feminino corrida', 'regata feminina', 'camiseta feminina', 'shorts feminino', 'legging feminina', 'jaqueta feminina', 'tênis feminino caminhada'],
+  },
+  'Calvin Klein': {
+    merchantId: '100553',
+    tipo: 'vtex',
+    dominio: 'www.calvinklein.com.br',
+    categorias: ['vestido feminino', 'blusa feminina', 'calça feminina', 'bolsa feminina', 'jaqueta feminina', 'saia', 'top feminino', 'chinelo feminino', 'moletom feminino', 'camiseta feminina'],
   },
 }
 
 const MIN_DISCOUNT = 15
-const MAX_PRODUCTS_PER_STORE = 20
+const MAX_PRODUCTS_PER_STORE = 25
 
 interface DiscoveredProduct {
   titulo: string
@@ -187,7 +199,7 @@ export async function POST(request: Request) {
           frete_gratis: false,
           qtd_vendida: 0,
           ativo: true,
-          loja_nome: nome.charAt(0).toUpperCase() + nome.slice(1),
+          loja_nome: nome,
           updated_at: new Date().toISOString(),
         }
 
@@ -225,9 +237,13 @@ export async function POST(request: Request) {
 function inferirNicho(titulo: string): string {
   const t = titulo.toLowerCase()
   if (/(tênis|tenis|sapato|chinelo|bota|sandália|sandalia|scarpin|sapatilha|rasteira|mule)/.test(t)) return 'calcados'
-  if (/(vestido|blusa|calça|camisa|bermuda|moletom|jaqueta|bolsa|saia|shorts|macacão)/.test(t)) return 'moda'
-  if (/(brinco|anel|colar|pulseira|pingente|berloques|argola|joia)/.test(t)) return 'joias'
+  if (/(legging|top .*(treino|fitness)|sutiã esportivo|shorts .*(corrida|treino|esport))/.test(t)) return 'esportes'
+  if (/(corrida|caminhada|running|academia|tennis|volleyball)/.test(t) && /(tênis|tenis)/.test(t)) return 'esportes'
+  if (/(vestido|blusa|calça|camisa|bermuda|moletom|jaqueta|bolsa|saia|shorts|macacão|cropped|regata|body|cardigan|pijama|camiseta|conjunto)/.test(t)) return 'moda'
+  if (/(brinco|anel|colar|pulseira|pingente|berloques|argola|joia|aliança|bracelete|choker|tornozeleira)/.test(t)) return 'joias'
   if (/(relógio|relogio)/.test(t)) return 'relogios'
-  if (/(perfume|maquiagem|hidratante|shampoo|creme)/.test(t)) return 'beleza'
+  if (/(perfume|maquiagem|hidratante|shampoo|creme|batom|base|rímel|sombra)/.test(t)) return 'beleza'
+  if (/(lingerie|biquini|maiô|calcinha|sutiã)/.test(t)) return 'moda'
+  if (/(boné|mochila|bolsa|meia|cinto)/.test(t)) return 'moda'
   return 'moda'
 }

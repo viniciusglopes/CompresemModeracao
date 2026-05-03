@@ -62,40 +62,46 @@ export async function POST(request: Request) {
   const nichosMap: Record<string, string[]> = { mercadolivre: NICHOS_ML, shopee: NICHOS_SHOPEE, lomadee: NICHOS_LOMADEE, awin: NICHOS_AWIN }
   const idxMap: Record<string, number> = { mercadolivre: mlIdx, shopee: shopeeIdx, lomadee: lomadeeIdx, awin: awinIdx }
 
-  // Processa 1 nicho por plataforma ativa
+  const NICHOS_POR_CICLO = 3
+
   for (const plataforma of ativas) {
     const nichos = nichosMap[plataforma] || NICHOS_ML
-    const idx = idxMap[plataforma] ?? 0
-    const nicho = nichos[idx]
+    const baseIdx = idxMap[plataforma] ?? 0
+    const resultadosPlat: any[] = []
 
-    try {
-      const res = await fetch(`${BASE_URL}/api/busca/${plataforma}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nicho, limite: 15 }),
-      })
-      const data = await res.json()
-      // Nota: /api/busca/{plataforma} já faz o log — não logar de novo aqui
-      if (data.error) {
-        resultados[plataforma] = { nicho, erro: data.error }
-      } else {
-        resultados[plataforma] = { nicho, salvos: data.salvos, total: data.total_encontrados }
+    for (let i = 0; i < NICHOS_POR_CICLO; i++) {
+      const idx = (baseIdx + i) % nichos.length
+      const nicho = nichos[idx]
+
+      try {
+        const res = await fetch(`${BASE_URL}/api/busca/${plataforma}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nicho, limite: 15 }),
+        })
+        const data = await res.json()
+        if (data.error) {
+          resultadosPlat.push({ nicho, erro: data.error })
+        } else {
+          resultadosPlat.push({ nicho, salvos: data.salvos, total: data.total_encontrados })
+        }
+      } catch (e: any) {
+        resultadosPlat.push({ nicho, erro: (e as any).message })
       }
-    } catch (e: any) {
-      resultados[plataforma] = { nicho, erro: (e as any).message }
     }
+
+    resultados[plataforma] = resultadosPlat
   }
 
-  // Avança os índices no banco
   await supabaseAdmin
     .from('config_plataformas')
     .upsert({
       plataforma: 'cron_state',
       credenciais: {
-        ml_idx: (mlIdx + 1) % NICHOS_ML.length,
-        shopee_idx: (shopeeIdx + 1) % NICHOS_SHOPEE.length,
-        lomadee_idx: (lomadeeIdx + 1) % NICHOS_LOMADEE.length,
-        awin_idx: (awinIdx + 1) % NICHOS_AWIN.length,
+        ml_idx: (mlIdx + NICHOS_POR_CICLO) % NICHOS_ML.length,
+        shopee_idx: (shopeeIdx + NICHOS_POR_CICLO) % NICHOS_SHOPEE.length,
+        lomadee_idx: (lomadeeIdx + NICHOS_POR_CICLO) % NICHOS_LOMADEE.length,
+        awin_idx: (awinIdx + NICHOS_POR_CICLO) % NICHOS_AWIN.length,
         last_run: new Date().toISOString(),
       },
       ativo: false,
