@@ -15,6 +15,7 @@ const navItems = [
   { label: 'Logs de API', href: '/admin/logs', icon: '🗂️' },
   { label: 'Analytics', href: '/admin/analytics', icon: '📈' },
   { label: 'APIs Referência', href: '/admin/apis', icon: '📚' },
+  { label: 'Linktree', href: '/admin/linktree', icon: '🌳' },
 ]
 
 const plataformas = [

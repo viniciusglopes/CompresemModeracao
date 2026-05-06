@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compre sem Moderação - Links</title>
+<meta name="description" content="Compre sem Moderação - As melhores ofertas da internet pra você. Grupos VIP e produtos com desconto.">
+<meta property="og:title" content="Compre sem Moderação">
+<meta property="og:description" content="As melhores ofertas da internet pra você">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://compresemmoderacao.com.br/linktree">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --pink: #EC4899;
+  --pink-light: #F472B6;
+  --pink-pale: #FFF1F2;
+  --pink-glow: rgba(236,72,153,.15);
+  --fuchsia: #D946EF;
+  --rose: #FB7185;
+  --dark: #1A1A2E;
+  --dark-mid: #2A2A42;
+  --dark-light: #3A3A55;
+  --dark-pale: #4A4A68;
+  --dark-bg: #12121F;
+  --dark-deep: #0A0A15;
+  --text-primary: #F0E6F6;
+  --text-secondary: #B39BC8;
+  --text-muted: #7A6B8A;
+  --border: rgba(236,72,153,.12);
+  --border-subtle: rgba(255,255,255,.06);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  background: linear-gradient(180deg, var(--dark-deep) 0%, var(--dark-bg) 40%, var(--dark-deep) 100%);
+}
+@keyframes fadeSlide { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+a { text-decoration: none; }
+
+.loading-wrap {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 60vh; color: var(--text-secondary); gap: 16px;
+}
+.spinner {
+  width: 40px; height: 40px; border: 3px solid var(--border-subtle);
+  border-top-color: var(--pink); border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+
+.public-wrap { max-width: 440px; margin: 0 auto; padding: 0 16px 32px; }
+.header {
+  background: linear-gradient(135deg, #FFF1F2 0%, #FDF2F8 50%, #FAE8FF 100%);
+  border-radius: 0 0 28px 28px; padding: 28px 24px 22px;
+  margin-bottom: 28px; text-align: center;
+  box-shadow: 0 8px 40px rgba(0,0,0,.25);
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+}
+.header-inner { display: flex; align-items: center; gap: 14px; }
+.brand-emoji { font-size: 48px; }
+.brand-name { font-size: 24px; line-height: 1.15; letter-spacing: -0.5px; }
+.brand-name .pink { color: var(--pink); font-weight: 900; }
+.brand-name .dark { color: var(--dark); font-weight: 700; }
+.tagline { color: #9CA3AF; font-size: 13px; margin: 2px 0 0; font-weight: 500; }
+.site-btn {
+  color: var(--dark); font-size: 13px; font-weight: 600;
+  background: var(--pink-pale); padding: 8px 20px; border-radius: 24px;
+  border: 1.5px solid var(--pink); display: inline-block;
+  transition: all .2s;
+}
+.site-btn:hover { background: var(--pink); color: #fff; }
+
+.section { margin-bottom: 26px; }
+.section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 0 6px; }
+.section-accent { width: 4px; height: 22px; border-radius: 4px; background: var(--pink); flex-shrink: 0; }
+.section-accent.purple { background: var(--fuchsia); }
+.section-title {
+  color: var(--text-secondary); font-size: 12px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 1.5px;
+}
+
+.card {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+  background: var(--dark-mid); border-radius: 14px; margin-bottom: 10px;
+  border: 1px solid var(--border-subtle); transition: all .22s ease;
+  animation: fadeSlide 0.45s ease both; color: inherit;
+}
+.card.vip { border-left: 3.5px solid var(--pink); }
+.card:hover { background: var(--dark-light); transform: translateY(-2px); box-shadow: 0 6px 24px rgba(0,0,0,.3), 0 0 0 1px var(--border); }
+.card-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(255,255,255,.06);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; overflow: hidden; font-size: 22px;
+}
+.card.vip .card-icon { background: var(--pink-glow); }
+.card-icon img { width: 44px; height: 44px; object-fit: cover; border-radius: 12px; }
+.card-label { flex: 1; color: var(--text-primary); font-size: 15px; font-weight: 600; }
+.card-arrow { color: var(--text-muted); font-size: 18px; font-weight: 400; transition: color .2s; }
+.card:hover .card-arrow { color: var(--pink); }
+
+.footer {
+  text-align: center; padding-top: 20px; margin-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+}
+.ig-link { color: var(--pink-light); font-size: 14px; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script>
+const API_URL = "/api/linktree";
+
+const LOGO_EMOJI = "👜";
+
+function renderCard(item, vip, delay) {
+  const hasLink = item.link && item.link.trim();
+  const tag = hasLink ? "a" : "div";
+  const href = hasLink ? ` href="${item.link}" target="_blank" rel="noopener noreferrer"` : "";
+  return `<${tag} class="card${vip?" vip":""}"${href} style="animation-delay:${delay}ms">
+    <div class="card-icon">${item.foto ? `<img src="${item.foto}" alt="">` : `<span>${item.icone||"👜"}</span>`}</div>
+    <span class="card-label">${item.nome}</span>
+    ${hasLink ? '<span class="card-arrow">→</span>' : ''}
+  </${tag}>`;
+}
+
+function render(data) {
+  let gruposHTML = "";
+  if (data.grupos && data.grupos.length) {
+    gruposHTML = `<div class="section">
+      <div class="section-header"><div class="section-accent"></div><h2 class="section-title">Grupos VIP de Ofertas</h2></div>
+      ${data.grupos.map((g,i) => renderCard(g, true, i*70)).join("")}
+    </div>`;
+  }
+  let produtosHTML = "";
+  if (data.produtos && data.produtos.length) {
+    produtosHTML = `<div class="section">
+      <div class="section-header"><div class="section-accent purple"></div><h2 class="section-title">Produtos em Destaque</h2></div>
+      ${data.produtos.map((p,i) => renderCard(p, false, i*70)).join("")}
+    </div>`;
+  }
+
+  document.getElementById("app").innerHTML = `
+    <div class="public-wrap">
+      <div class="header">
+        <div class="header-inner">
+          <span class="brand-emoji">${LOGO_EMOJI}</span>
+          <div style="text-align:left">
+            <h1 class="brand-name"><span class="pink">Compre</span> <span class="dark">sem Moderação</span></h1>
+            <p class="tagline">As melhores ofertas da internet pra você</p>
+          </div>
+        </div>
+        <a href="https://compresemmoderacao.com.br" target="_blank" rel="noopener noreferrer" class="site-btn">🌐 compresemmoderacao.com.br</a>
+      </div>
+      ${gruposHTML}
+      ${produtosHTML}
+      <div class="footer">
+        <a href="https://instagram.com/compresemmoderacao" target="_blank" rel="noopener noreferrer" class="ig-link">📸 @compresemmoderacao</a>
+      </div>
+    </div>`;
+}
+
+(async function init() {
+  document.getElementById("app").innerHTML = `
+    <div class="loading-wrap">
+      <div class="spinner"></div>
+      <p style="font-size:14px;font-weight:600">Carregando...</p>
+    </div>`;
+
+  try {
+    const res = await fetch(API_URL);
+    if (res.ok) {
+      render(await res.json());
+    } else {
+      render({ grupos: [], produtos: [] });
+    }
+  } catch (e) {
+    render({ grupos: [], produtos: [] });
+  }
+})();
+</script>
+</body>
+</html>
