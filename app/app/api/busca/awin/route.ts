@@ -6,10 +6,9 @@ import { logApi } from '@/lib/api-logger'
 const PUBLISHER_ID = '1778660'
 
 const VTEX_STORES: Record<string, { searchTerms: string[] }> = {
-  'cea.com.br':            { searchTerms: ['vestido feminino', 'blusa feminina', 'calça feminina', 'saia feminina', 'bolsa feminina', 'tênis feminino'] },
-  'animale.com.br':        { searchTerms: ['vestido', 'blusa', 'saia', 'calça'] },
-  'asics.com.br':          { searchTerms: ['tênis feminino', 'tênis corrida'] },
-  'lojasrenner.com.br':    { searchTerms: ['vestido feminino', 'blusa feminina', 'calça feminina', 'jaqueta feminina'] },
+  'cea.com.br':            { searchTerms: ['vestido feminino', 'blusa feminina', 'calca jeans feminina', 'tenis feminino', 'bolsa feminina', 'saia feminina'] },
+  'animale.com.br':        { searchTerms: ['vestido', 'blusa', 'saia', 'calca'] },
+  'asics.com.br':          { searchTerms: ['tenis feminino', 'tenis corrida'] },
 }
 
 const SEARCH_KEYWORDS: Record<string, string[]> = {
@@ -49,6 +48,15 @@ function nichoFromTitulo(titulo: string): string | null {
 
 function gerarDeeplink(merchantId: string, urlProduto: string): string {
   return `https://www.awin1.com/cread.php?awinmid=${merchantId}&awinaffid=${PUBLISHER_ID}&ued=${encodeURIComponent(urlProduto)}`
+}
+
+function hashId(s: string): string {
+  let h1 = 0, h2 = 0
+  for (let i = 0; i < s.length; i++) {
+    h1 = ((h1 << 5) - h1 + s.charCodeAt(i)) | 0
+    h2 = ((h2 << 7) + h2 + s.charCodeAt(i) * (i + 1)) | 0
+  }
+  return Math.abs(h1).toString(36) + Math.abs(h2).toString(36)
 }
 
 function getDomain(url: string): string {
@@ -272,7 +280,7 @@ export async function POST(request: Request) {
         link_afiliado: gerarDeeplink(loja.merchant_id, urlProduto),
         thumbnail: (p.imagem || '').replace('http://', 'https://'),
         nicho: nichoReal,
-        produto_id_externo: `awin_${loja.merchant_id}_${Buffer.from(p.titulo).toString('base64').slice(0, 20)}`,
+        produto_id_externo: `awin_${loja.merchant_id}_${hashId(urlProduto)}`,
         frete_gratis: false,
         qtd_vendida: 0,
         ativo: true,
