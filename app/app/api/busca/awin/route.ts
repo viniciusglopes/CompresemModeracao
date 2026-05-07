@@ -5,6 +5,31 @@ import { logApi } from '@/lib/api-logger'
 
 const PUBLISHER_ID = '1778660'
 
+const VTEX_STORES: Record<string, { searchTerms: string[] }> = {
+  'cea.com.br':            { searchTerms: ['vestido feminino', 'blusa feminina', 'calça feminina', 'saia feminina', 'bolsa feminina', 'tênis feminino'] },
+  'animale.com.br':        { searchTerms: ['vestido', 'blusa', 'saia', 'calça'] },
+  'asics.com.br':          { searchTerms: ['tênis feminino', 'tênis corrida'] },
+  'lojasrenner.com.br':    { searchTerms: ['vestido feminino', 'blusa feminina', 'calça feminina', 'jaqueta feminina'] },
+}
+
+const SEARCH_KEYWORDS: Record<string, string[]> = {
+  'centauro.com.br':   ['tênis feminino', 'roupa feminina'],
+  'decathlon.com.br':  ['tênis', 'legging'],
+  'nike.com.br':       ['tênis feminino', 'calçado feminino'],
+  'br.puma.com':       ['tênis feminino'],
+  'underarmour.com.br':['tênis feminino'],
+  'fastshop.com.br':   ['airfryer', 'aspirador'],
+  'carrefour.com.br':  ['eletrodoméstico'],
+}
+
+interface ProdutoExtraido {
+  titulo: string
+  preco: number
+  precoOriginal: number
+  url: string
+  imagem: string
+}
+
 function nichoFromTitulo(titulo: string): string | null {
   const t = titulo.toLowerCase()
   if (/(celular|smartphone|iphone|samsung|xiaomi|fone|smartwatch|carregador|power.?bank|caixa de som)/.test(t)) return 'eletronicos'
@@ -13,10 +38,10 @@ function nichoFromTitulo(titulo: string): string | null {
   if (/(playstation|ps[45]|xbox|nintendo|headset gamer|console)/.test(t)) return 'games'
   if (/(vestido|blusa|calça|camisa|bermuda|moletom|jaqueta|saia|bolsa|óculos|relógio)/.test(t)) return 'moda'
   if (/(perfume|maquiagem|batom|hidratante|shampoo|protetor solar|sérum|esmalte)/.test(t)) return 'beleza'
-  if (/(luminária|cortina|tapete|organizador|jogo de cama|travesseiro|edredom)/.test(t)) return 'casa'
-  if (/(tênis|tenis|halter|bicicleta|esteira|chuteira|whey|creatina)/.test(t)) return 'esportes'
+  if (/(luminária|cortina|tapete|organizador|jogo de cama|travesseiro|edredom)/.test(t)) return 'casa_moveis'
+  if (/(tênis|tenis|halter|bicicleta|esteira|chuteira|whey|creatina|legging)/.test(t)) return 'calcados'
   if (/(fralda|carrinho.*bebê|mamadeira|chupeta|berço)/.test(t)) return 'bebes'
-  if (/(ração|coleira|brinquedo.*(cão|gato|cachorro|pet)|areia.*gato)/.test(t)) return 'pet'
+  if (/(ração|coleira|brinquedo.*(cão|gato|cachorro|pet)|areia.*gato)/.test(t)) return 'pet_shop'
   if (/(furadeira|parafusadeira|alicate|esmerilhadeira|serra)/.test(t)) return 'ferramentas'
   if (/(lego|boneca|hot wheels|nerf|quebra-cabeça|brinquedo)/.test(t)) return 'brinquedos'
   return null
@@ -26,17 +51,117 @@ function gerarDeeplink(merchantId: string, urlProduto: string): string {
   return `https://www.awin1.com/cread.php?awinmid=${merchantId}&awinaffid=${PUBLISHER_ID}&ued=${encodeURIComponent(urlProduto)}`
 }
 
-function extrairProdutosHtml(html: string, baseUrl: string): Array<{titulo: string, preco: number, precoOriginal: number, url: string, imagem: string}> {
-  const produtos: Array<{titulo: string, preco: number, precoOriginal: number, url: string, imagem: string}> = []
+function getDomain(url: string): string {
+  try {
+    return new URL(url).hostname.replace('www.', '')
+  } catch {
+    return ''
+  }
+}
 
-  const productPatterns = [
-    // JSON-LD structured data
-    /"@type"\s*:\s*"Product"[\s\S]*?"name"\s*:\s*"([^"]+)"[\s\S]*?"price"\s*:\s*"?([\d.,]+)"?/g,
-    // Open Graph product tags
-    /<meta\s+property="product:price:amount"\s+content="([\d.,]+)"/g,
+async function buscarViaVtex(storeUrl: string, searchTerms: string[], limite: number): Promise<ProdutoExtraido[]> {
+  const domain = getDomain(storeUrl)
+  const produtos: ProdutoExtraido[] = []
+  const seen = new Set<string>()
+
+  for (const term of searchTerms) {
+    if (produtos.length >= limite) break
+    try {
+      const apiUrl = `https://www.${domain}/api/catalog_system/pub/products/search/?ft=${encodeURIComponent(term)}&_from=0&_to=14&O=OrderByPriceASC`
+      const res = await fetch(apiUrl, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15000),
+      })
+
+      if (!res.ok) continue
+      const data = await res.json()
+      if (!Array.isArray(data)) continue
+
+      for (const p of data) {
+        if (produtos.length >= limite) break
+        if (!p?.productName || !p?.items?.[0]) continue
+
+        const productId = p.productId || p.productName
+        if (seen.has(productId)) continue
+        seen.add(productId)
+
+        const item = p.items[0]
+        const seller = item.sellers?.[0]?.commertialOffer
+        if (!seller) continue
+
+        const price = seller.Price || 0
+        const listPrice = seller.ListPrice || price
+        const available = seller.AvailableQuantity ?? seller.IsAvailable
+
+        if (price <= 0 || available === 0 || available === false) continue
+        if (listPrice > price && ((listPrice - price) / listPrice) < 0.10) continue
+
+        const imageUrl = item.images?.[0]?.imageUrl || ''
+        const link = p.link || `https://www.${domain}/${p.linkText}/p`
+
+        produtos.push({
+          titulo: p.productName,
+          preco: price,
+          precoOriginal: listPrice > price ? listPrice : price,
+          url: link.startsWith('http') ? link : `https://www.${domain}${link}`,
+          imagem: imageUrl.replace('http://', 'https://'),
+        })
+      }
+    } catch {}
+  }
+
+  return produtos
+}
+
+async function buscarViaHtmlScraping(storeUrl: string): Promise<ProdutoExtraido[]> {
+  const promoUrls = [
+    `${storeUrl}/sale`,
+    `${storeUrl}/outlet`,
+    `${storeUrl}/promocoes`,
+    `${storeUrl}/ofertas`,
+    `${storeUrl}/promocao`,
   ]
 
-  // Try JSON-LD first
+  for (const promoUrl of promoUrls) {
+    try {
+      const res = await fetch(promoUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml',
+          'Accept-Language': 'pt-BR,pt;q=0.9',
+        },
+        redirect: 'follow',
+        cache: 'no-store',
+        signal: AbortSignal.timeout(15000),
+      })
+
+      if (!res.ok) continue
+      const html = await res.text()
+      const prods = extrairProdutosHtml(html, storeUrl)
+      if (prods.length > 0) return prods
+    } catch {}
+  }
+
+  // Fallback: homepage
+  try {
+    const res = await fetch(storeUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      redirect: 'follow',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(15000),
+    })
+    if (res.ok) {
+      return extrairProdutosHtml(await res.text(), storeUrl)
+    }
+  } catch {}
+
+  return []
+}
+
+function extrairProdutosHtml(html: string, baseUrl: string): ProdutoExtraido[] {
+  const produtos: ProdutoExtraido[] = []
+
   const jsonLdMatches = html.matchAll(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/gi)
   for (const match of jsonLdMatches) {
     try {
@@ -85,12 +210,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'AWIN está desativada' }, { status: 400 })
     }
 
-    const token = cfg.credenciais?.api_token
-    if (!token) {
-      return NextResponse.json({ error: 'Token AWIN não configurado' }, { status: 400 })
-    }
-
-    // Busca lojas ativas da tabela awin_lojas
     const { data: lojas } = await supabaseAdmin
       .from('awin_lojas')
       .select('*')
@@ -102,7 +221,6 @@ export async function POST(request: Request) {
       return NextResponse.json(resp)
     }
 
-    // Lê estado do cron para saber qual loja processar nesta execução
     const { data: cfgRow } = await supabaseAdmin
       .from('config_plataformas')
       .select('credenciais')
@@ -112,57 +230,21 @@ export async function POST(request: Request) {
     const state = cfgRow?.credenciais || {}
     const lojaIdx = (state.awin_loja_idx || 0) % lojas.length
     const loja = lojas[lojaIdx]
+    const domain = getDomain(loja.url)
 
-    // URLs de promoção comuns
-    const promoUrls = [
-      `${loja.url}/sale`,
-      `${loja.url}/outlet`,
-      `${loja.url}/promocoes`,
-      `${loja.url}/ofertas`,
-      `${loja.url}/promocao`,
-    ]
+    let produtosEncontrados: ProdutoExtraido[] = []
+    let metodo = 'html'
 
-    let produtosEncontrados: Array<{titulo: string, preco: number, precoOriginal: number, url: string, imagem: string}> = []
-
-    for (const promoUrl of promoUrls) {
-      try {
-        const res = await fetch(promoUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
-          },
-          redirect: 'follow',
-          cache: 'no-store',
-        })
-
-        if (res.ok) {
-          const html = await res.text()
-          const prods = extrairProdutosHtml(html, loja.url)
-          if (prods.length > 0) {
-            produtosEncontrados = prods
-            break
-          }
-        }
-      } catch {}
+    // Strategy 1: VTEX API (most reliable)
+    if (VTEX_STORES[domain]) {
+      metodo = 'vtex'
+      produtosEncontrados = await buscarViaVtex(loja.url, VTEX_STORES[domain].searchTerms, limite)
     }
 
-    // Se não encontrou via promoções, tenta a página principal
+    // Strategy 2: HTML scraping fallback
     if (produtosEncontrados.length === 0) {
-      try {
-        const res = await fetch(loja.url, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-          },
-          redirect: 'follow',
-          cache: 'no-store',
-        })
-        if (res.ok) {
-          const html = await res.text()
-          produtosEncontrados = extrairProdutosHtml(html, loja.url)
-        }
-      } catch {}
+      metodo = produtosEncontrados.length === 0 && VTEX_STORES[domain] ? 'vtex+html' : 'html'
+      produtosEncontrados = await buscarViaHtmlScraping(loja.url)
     }
 
     const produtosParaSalvar = produtosEncontrados.slice(0, limite).map(p => {
@@ -201,7 +283,6 @@ export async function POST(request: Request) {
       }
     }).filter(p => p.titulo && p.preco > 0)
 
-    // Atualiza índice da loja para próxima execução
     await supabaseAdmin
       .from('config_plataformas')
       .upsert({
@@ -211,6 +292,8 @@ export async function POST(request: Request) {
           awin_loja_idx: (lojaIdx + 1) % lojas.length,
           awin_last_loja: loja.nome,
           awin_last_run: new Date().toISOString(),
+          awin_last_metodo: metodo,
+          awin_last_encontrados: produtosEncontrados.length,
         },
         ativo: false,
       }, { onConflict: 'plataforma' })
@@ -220,9 +303,10 @@ export async function POST(request: Request) {
         salvos: 0,
         total_encontrados: produtosEncontrados.length,
         loja: loja.nome,
+        metodo,
         proxima_loja: lojas[(lojaIdx + 1) % lojas.length]?.nome,
       }
-      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'success', duracao_ms: Date.now() - t0, total_encontrados: 0, salvos: 0, request_json: { loja: loja.nome }, response_json: resp })
+      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'success', duracao_ms: Date.now() - t0, total_encontrados: 0, salvos: 0, request_json: { loja: loja.nome, metodo }, response_json: resp })
       return NextResponse.json(resp)
     }
 
@@ -232,7 +316,7 @@ export async function POST(request: Request) {
       .select('id')
 
     if (error) {
-      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'error', duracao_ms: Date.now() - t0, erro: error.message, request_json: { loja: loja.nome }, response_json: { error: error.message } })
+      await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'error', duracao_ms: Date.now() - t0, erro: error.message, request_json: { loja: loja.nome, metodo }, response_json: { error: error.message } })
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
@@ -241,6 +325,7 @@ export async function POST(request: Request) {
       salvos: qtdSalvos,
       total_encontrados: produtosEncontrados.length,
       loja: loja.nome,
+      metodo,
       proxima_loja: lojas[(lojaIdx + 1) % lojas.length]?.nome,
       produtos: produtosParaSalvar.slice(0, 5).map(p => ({
         titulo: p.titulo,
@@ -249,7 +334,7 @@ export async function POST(request: Request) {
       })),
     }
 
-    await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'success', duracao_ms: Date.now() - t0, total_encontrados: produtosEncontrados.length, salvos: qtdSalvos, request_json: { loja: loja.nome }, response_json: respData })
+    await logApi({ plataforma: 'awin', endpoint: '/busca/awin', status: 'success', duracao_ms: Date.now() - t0, total_encontrados: produtosEncontrados.length, salvos: qtdSalvos, request_json: { loja: loja.nome, metodo }, response_json: respData })
 
     return NextResponse.json(respData)
   } catch (e: any) {
