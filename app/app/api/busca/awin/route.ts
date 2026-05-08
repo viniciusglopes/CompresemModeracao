@@ -9,6 +9,7 @@ const VTEX_STORES: Record<string, { searchTerms: string[] }> = {
   'cea.com.br':            { searchTerms: ['vestido feminino', 'blusa feminina', 'calca jeans feminina', 'tenis feminino', 'bolsa feminina', 'saia feminina'] },
   'animale.com.br':        { searchTerms: ['vestido', 'blusa', 'saia', 'calca'] },
   'asics.com.br':          { searchTerms: ['tenis feminino', 'tenis corrida'] },
+  'underarmour.com.br':    { searchTerms: ['tenis feminino', 'legging feminina', 'camiseta feminina'] },
 }
 
 const SEARCH_KEYWORDS: Record<string, string[]> = {
