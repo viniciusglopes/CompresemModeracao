@@ -10,16 +10,13 @@ const VTEX_STORES: Record<string, { searchTerms: string[] }> = {
   'animale.com.br':        { searchTerms: ['vestido', 'blusa', 'saia', 'calca'] },
   'asics.com.br':          { searchTerms: ['tenis feminino', 'tenis corrida'] },
   'underarmour.com.br':    { searchTerms: ['tenis feminino', 'legging feminina', 'camiseta feminina'] },
-}
-
-const SEARCH_KEYWORDS: Record<string, string[]> = {
-  'centauro.com.br':   ['tênis feminino', 'roupa feminina'],
-  'decathlon.com.br':  ['tênis', 'legging'],
-  'nike.com.br':       ['tênis feminino', 'calçado feminino'],
-  'br.puma.com':       ['tênis feminino'],
-  'underarmour.com.br':['tênis feminino'],
-  'fastshop.com.br':   ['airfryer', 'aspirador'],
-  'carrefour.com.br':  ['eletrodoméstico'],
+  'vivara.com.br':         { searchTerms: ['anel feminino', 'brinco', 'colar', 'pulseira', 'relogio feminino'] },
+  'mizuno.com.br':         { searchTerms: ['tenis feminino', 'tenis corrida feminino', 'tenis wave'] },
+  'calvinklein.com.br':    { searchTerms: ['camiseta feminina', 'vestido', 'bolsa feminina', 'calcinha', 'perfume feminino'] },
+  'usereserva.com':        { searchTerms: ['camisa feminina', 'vestido', 'blusa feminina', 'saia'] },
+  'kipling.com.br':        { searchTerms: ['mochila feminina', 'bolsa', 'necessaire', 'carteira'] },
+  'intimissimi.com.br':    { searchTerms: ['lingerie', 'sutia', 'calcinha', 'pijama feminino', 'body'] },
+  'lego.com.br':           { searchTerms: ['lego friends', 'lego disney', 'lego harry potter', 'lego botanica'] },
 }
 
 interface ProdutoExtraido {
@@ -36,8 +33,8 @@ function nichoFromTitulo(titulo: string): string | null {
   if (/(notebook|laptop|mouse|teclado|monitor|ssd|pendrive|webcam|impressora)/.test(t)) return 'informatica'
   if (/(fritadeira|air.?fryer|aspirador|liquidificador|cafeteira|ventilador|micro.?ondas|geladeira)/.test(t)) return 'eletrodomesticos'
   if (/(playstation|ps[45]|xbox|nintendo|headset gamer|console)/.test(t)) return 'games'
-  if (/(vestido|blusa|calça|camisa|bermuda|moletom|jaqueta|saia|bolsa|óculos|relógio)/.test(t)) return 'moda'
-  if (/(perfume|maquiagem|batom|hidratante|shampoo|protetor solar|sérum|esmalte)/.test(t)) return 'beleza'
+  if (/(vestido|blusa|calça|camisa|bermuda|moletom|jaqueta|saia|bolsa|óculos|relógio|anel|brinco|colar|pulseira|pingente|aliança|joia)/.test(t)) return 'moda'
+  if (/(perfume|maquiagem|batom|hidratante|shampoo|protetor solar|sérum|esmalte|lingerie|suti[aã]|calcinha|pijama|body)/.test(t)) return 'beleza'
   if (/(luminária|cortina|tapete|organizador|jogo de cama|travesseiro|edredom)/.test(t)) return 'casa_moveis'
   if (/(tênis|tenis|halter|bicicleta|esteira|chuteira|whey|creatina|legging)/.test(t)) return 'calcados'
   if (/(fralda|carrinho.*bebê|mamadeira|chupeta|berço)/.test(t)) return 'bebes'
