@@ -71,6 +71,32 @@ function detectarPlataforma(url: string): { plataforma: string; produtoId: strin
   }
 }
 
+// ─── Gera link de afiliado Shopee via generateShortLink ──────────────────────
+
+async function gerarLinkShopee(appId: string, secret: string, originUrl: string): Promise<string | null> {
+  const body = JSON.stringify({
+    query: `mutation { generateShortLink(input: { originUrl: "${originUrl}" }) { shortLink } }`,
+  })
+  const timestamp = Math.floor(Date.now() / 1000)
+  const factor = `${appId}${timestamp}${body}${secret}`
+  const signature = createHash('sha256').update(factor).digest('hex')
+  const authorization = `SHA256 Credential=${appId}, Signature=${signature}, Timestamp=${timestamp}`
+
+  try {
+    const res = await fetch('https://open-api.affiliate.shopee.com.br/graphql', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: authorization },
+      body,
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data?.data?.generateShortLink?.shortLink || null
+  } catch {
+    return null
+  }
+}
+
 // ─── Gera link de afiliado AWIN via Link Builder API ─────────────────────────
 
 async function gerarLinkAwin(merchantId: string, destUrl: string, token: string, publisherId: string): Promise<{ url: string; shortUrl: string } | null> {
@@ -358,6 +384,7 @@ export async function POST(request: Request) {
     }
 
     let awinInfo: { detectado: boolean; loja?: string; link_afiliado?: string; link_curto?: string } = { detectado: false }
+    let shopeeInfo: { detectado: boolean; link_afiliado?: string } = { detectado: false }
     let linkAfiliado = link_afiliado || ''
 
     if (plataforma === 'awin' && awinMerchantId) {
@@ -375,6 +402,25 @@ export async function POST(request: Request) {
         if (links) {
           linkAfiliado = links.shortUrl || links.url
           awinInfo = { detectado: true, loja: awinNome, link_afiliado: links.url, link_curto: links.shortUrl }
+        }
+      }
+    }
+
+    if (plataforma === 'shopee') {
+      const { data: cfg } = await supabaseAdmin
+        .from('config_plataformas')
+        .select('credenciais')
+        .eq('plataforma', 'shopee')
+        .maybeSingle()
+
+      const appId = cfg?.credenciais?.app_id
+      const secret = cfg?.credenciais?.secret
+
+      if (appId && secret) {
+        const shortLink = await gerarLinkShopee(appId, secret, url)
+        if (shortLink) {
+          linkAfiliado = shortLink
+          shopeeInfo = { detectado: true, link_afiliado: shortLink }
         }
       }
     }
@@ -458,7 +504,7 @@ export async function POST(request: Request) {
     }
 
     if (apenas_preview) {
-      return NextResponse.json({ preview: produto, awin_info: awinInfo })
+      return NextResponse.json({ preview: produto, awin_info: awinInfo, shopee_info: shopeeInfo })
     }
 
     if (!produto.titulo) {
@@ -473,7 +519,7 @@ export async function POST(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    return NextResponse.json({ ok: true, produto: { ...produto, id: salvo?.id }, awin_info: awinInfo })
+    return NextResponse.json({ ok: true, produto: { ...produto, id: salvo?.id }, awin_info: awinInfo, shopee_info: shopeeInfo })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

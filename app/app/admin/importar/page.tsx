@@ -61,12 +61,18 @@ interface AwinInfo {
   link_curto?: string
 }
 
+interface ShopeeInfo {
+  detectado: boolean
+  link_afiliado?: string
+}
+
 export default function ImportarPage() {
   const [urlProduto, setUrlProduto] = useState('')
   const [buscando, setBuscando] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [preview, setPreview] = useState<Produto | null>(null)
   const [awinInfo, setAwinInfo] = useState<AwinInfo | null>(null)
+  const [shopeeInfo, setShopeeInfo] = useState<ShopeeInfo | null>(null)
   const [nicho, setNicho] = useState('')
   const [preco, setPreco] = useState('')
   const [precoOriginal, setPrecoOriginal] = useState('')
@@ -83,6 +89,7 @@ export default function ImportarPage() {
     setSucesso('')
     setPreview(null)
     setAwinInfo(null)
+    setShopeeInfo(null)
     setThumbnailUrl('')
     setTituloManual('')
     try {
@@ -95,6 +102,7 @@ export default function ImportarPage() {
       if (data.error) { setErro(data.error); return }
       setPreview(data.preview)
       setAwinInfo(data.awin_info || null)
+      setShopeeInfo(data.shopee_info || null)
       setNicho(data.preview.nicho)
       setPreco(data.preview.preco > 0 ? String(data.preview.preco) : '')
       setPrecoOriginal(data.preview.preco_original > 0 ? String(data.preview.preco_original) : '')
@@ -214,6 +222,21 @@ export default function ImportarPage() {
                 {awinInfo.link_curto && (
                   <p className="text-xs text-blue-600 truncate">
                     Link afiliado: <span className="font-mono">{awinInfo.link_curto}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Shopee detection banner */}
+            {shopeeInfo?.detectado && (
+              <div className="mb-4 p-3 rounded-lg bg-orange-50 border border-orange-200">
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge className="bg-orange-500 text-white hover:bg-orange-500 text-xs">SHOPEE</Badge>
+                  <span className="text-sm font-semibold text-orange-800">Link de afiliado gerado</span>
+                </div>
+                {shopeeInfo.link_afiliado && (
+                  <p className="text-xs text-orange-600 truncate">
+                    Link afiliado: <span className="font-mono">{shopeeInfo.link_afiliado}</span>
                   </p>
                 )}
               </div>
@@ -349,7 +372,7 @@ export default function ImportarPage() {
                 className="flex-1 bg-green-500 hover:bg-green-600 text-white h-11 font-semibold">
                 {salvando ? 'Publicando...' : 'Publicar'}
               </Button>
-              <Button onClick={() => { setPreview(null); setErro(''); setAwinInfo(null) }} variant="outline" className="text-gray-500">
+              <Button onClick={() => { setPreview(null); setErro(''); setAwinInfo(null); setShopeeInfo(null) }} variant="outline" className="text-gray-500">
                 X
               </Button>
             </div>
