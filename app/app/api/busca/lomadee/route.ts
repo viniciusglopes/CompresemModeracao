@@ -6,40 +6,24 @@ import { logApi } from '@/lib/api-logger'
 const LOMADEE_API = 'https://api-beta.lomadee.com.br/affiliate'
 
 const CATEGORIAS_LOMADEE: Record<string, { label: string; keywords: string[]; emoji: string }> = {
-  eletronicos:      { label: 'Eletrônicos',              keywords: ['celular', 'smartphone', 'fone bluetooth', 'smartwatch', 'carregador'], emoji: '📱' },
-  informatica:      { label: 'Informática',              keywords: ['notebook', 'mouse gamer', 'teclado', 'monitor', 'ssd', 'webcam'], emoji: '💻' },
-  eletrodomesticos: { label: 'Eletrodomésticos',         keywords: ['fritadeira airfryer', 'aspirador', 'liquidificador', 'ventilador', 'cafeteira'], emoji: '🏠' },
-  games:            { label: 'Games',                    keywords: ['controle ps5', 'headset gamer', 'console', 'nintendo switch'], emoji: '🎮' },
-  moda:             { label: 'Moda Feminina',            keywords: ['vestido feminino', 'blusa feminina', 'calça jeans feminina', 'saia'], emoji: '👗' },
-  moda_masc:        { label: 'Moda Masculina',           keywords: ['camisa masculina', 'calça masculina', 'bermuda masculina', 'moletom'], emoji: '👔' },
-  beleza:           { label: 'Beleza e Cuidado Pessoal', keywords: ['perfume', 'maquiagem', 'hidratante', 'shampoo', 'protetor solar'], emoji: '💄' },
-  casa:             { label: 'Casa e Decoração',         keywords: ['luminária', 'cortina', 'organizador', 'tapete', 'jogo de cama'], emoji: '🛋️' },
-  esportes:         { label: 'Esportes e Lazer',         keywords: ['tênis corrida', 'halter', 'bicicleta', 'garrafa térmica'], emoji: '⚽' },
-  bebes:            { label: 'Bebês e Crianças',         keywords: ['fralda', 'carrinho bebê', 'mamadeira', 'roupa bebê'], emoji: '🍼' },
-  pet:              { label: 'Pet Shop',                 keywords: ['ração cachorro', 'ração gato', 'coleira', 'cama pet'], emoji: '🐾' },
-  ferramentas:      { label: 'Ferramentas',              keywords: ['furadeira', 'parafusadeira', 'alicate', 'trena'], emoji: '🔧' },
-  calcados:         { label: 'Calçados',                 keywords: ['tênis masculino', 'tênis feminino', 'sandália', 'bota'], emoji: '👟' },
-  casa_moveis:      { label: 'Casa e Móveis',            keywords: ['sofá', 'colchão', 'armário', 'mesa escritório'], emoji: '🛋️' },
-  brinquedos:       { label: 'Brinquedos',               keywords: ['lego', 'boneca', 'carrinho', 'quebra-cabeça'], emoji: '🧸' },
+  moda:       { label: 'Moda Feminina',    keywords: ['vestido feminino', 'blusa feminina', 'calça jeans feminina', 'saia', 'cropped', 'body feminino', 'legging', 'casaco feminino', 'jaqueta feminina', 'pijama feminino'], emoji: '👗' },
+  bolsas:     { label: 'Bolsas e Acessórios', keywords: ['bolsa feminina', 'mochila feminina', 'carteira feminina', 'nécessaire', 'mala viagem'], emoji: '👜' },
+  lingerie:   { label: 'Lingerie e Meia',  keywords: ['lingerie', 'sutiã', 'calcinha', 'meia calça', 'pijama'], emoji: '🩱' },
+  beleza:     { label: 'Beleza e Skincare', keywords: ['perfume feminino', 'creme corporal', 'hidratante facial', 'sérum', 'óleo corporal', 'sabonete líquido', 'loção'], emoji: '💄' },
+  calcados:   { label: 'Calçados Femininos', keywords: ['sandália feminina', 'bota feminina', 'tênis feminino', 'sapatilha', 'scarpin', 'rasteirinha'], emoji: '👠' },
+  casa:       { label: 'Casa e Decoração',  keywords: ['jogo de cama', 'toalha banho', 'cortina', 'tapete', 'organizador', 'luminária', 'edredom', 'travesseiro'], emoji: '🏠' },
+  eletro:     { label: 'Eletro e Lifestyle', keywords: ['secador cabelo', 'chapinha', 'airfryer', 'cafeteira', 'aspirador robô', 'liquidificador', 'umidificador'], emoji: '✨' },
 }
 
 function nichoFromTitulo(titulo: string): string | null {
   const t = titulo.toLowerCase()
-  if (/(celular|smartphone|iphone|samsung galaxy|xiaomi|redmi|fone (de ouvido|bluetooth)|smartwatch|carregador (turbo|rápido|tipo c|usb)|power ?bank|caixa de som|cabo (usb|hdmi|lightning))/.test(t)) return 'eletronicos'
-  if (/(notebook|laptop|mouse (gamer|sem fio)|teclado (mecânico|gamer)|monitor\b|ssd|pendrive|webcam|impressora|placa de vídeo|memória ram|hd externo)/.test(t)) return 'informatica'
-  if (/(fritadeira|air ?fryer|aspirador|liquidificador|ventilador|cafeteira|micro.?ondas|geladeira|máquina de lavar|fogão|ar.condicionado|panela|ferro de passar)/.test(t)) return 'eletrodomesticos'
-  if (/(playstation|ps[45]|xbox|nintendo|controle (gamer|ps|xbox)|headset gamer|jogo (ps|xbox|switch)|console)/.test(t)) return 'games'
-  if (/(vestido|blusa feminina|saia|calça (jeans )?feminina|moda feminina|body feminino|cropped|biquíni|legging)/.test(t)) return 'moda'
-  if (/(camisa masculina|calça masculina|bermuda|moletom masculino|camiseta masculina|polo masculin|cueca)/.test(t)) return 'moda_masc'
-  if (/(perfume|maquiagem|batom|hidratante|shampoo|condicionador|protetor solar|sérum|esmalte|creme (facial|corporal)|desodorante)/.test(t)) return 'beleza'
-  if (/(luminária|cortina|tapete|organizador|jogo de cama|travesseiro|edredom|lençol|vaso|quadro decorativo|toalha)/.test(t)) return 'casa'
-  if (/(sofá|colchão|armário|mesa|cadeira (gamer|escritório)|guarda-roupa|estante|rack)/.test(t)) return 'casa_moveis'
-  if (/(tênis|tenis|halter|anilha|bicicleta|esteira|garrafa térmica|chuteira|whey|creatina|suplemento)/.test(t)) return 'esportes'
-  if (/(fralda|carrinho (de )?bebê|mamadeira|chupeta|roupa (de )?bebê|berço|babador)/.test(t)) return 'bebes'
-  if (/(ração|coleira|brinquedo (para )?(cão|gato|cachorro|pet)|cama (para )?(pet|cachorro|gato)|areia (para )?gato)/.test(t)) return 'pet'
-  if (/(furadeira|parafusadeira|chave (de fenda|catraca)|alicate|esmerilhadeira|trena|martelo|serra)/.test(t)) return 'ferramentas'
-  if (/(tênis |sandália |bota |chinelo |sapato |sapatilha )/.test(t)) return 'calcados'
-  if (/(lego|boneca|hot wheels|nerf|quebra-cabeça|brinquedo)/.test(t)) return 'brinquedos'
+  if (/(bolsa|mochila feminina|carteira feminina|nécessaire|mala (de )?viagem)/.test(t)) return 'bolsas'
+  if (/(lingerie|sutiã|calcinha|meia.calça|camisola|body (renda|feminino))/.test(t)) return 'lingerie'
+  if (/(vestido|blusa feminina|saia|calça (jeans )?feminina|body feminino|cropped|legging|casaco feminino|jaqueta feminina|cardigan)/.test(t)) return 'moda'
+  if (/(perfume|creme (corporal|facial)|hidratante|sérum|óleo corporal|loção|sabonete|skincare)/.test(t)) return 'beleza'
+  if (/(sandália|bota feminina|tênis feminino|sapatilha|scarpin|rasteirinha|tamanco|chinelo feminino)/.test(t)) return 'calcados'
+  if (/(jogo de cama|toalha|cortina|tapete|organizador|luminária|edredom|travesseiro|lençol|vaso|quadro decorativo)/.test(t)) return 'casa'
+  if (/(secador|chapinha|prancha|airfryer|air ?fryer|cafeteira|aspirador|liquidificador|umidificador|fritadeira)/.test(t)) return 'eletro'
   return null
 }
 
