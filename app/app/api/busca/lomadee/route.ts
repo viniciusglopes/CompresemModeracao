@@ -72,8 +72,26 @@ async function fetchLomadeeProducts(apiKey: string, keyword: string, page: numbe
       url: item.url || '',
       seller: item.options?.[0]?.seller || '',
       available: item.available,
+      organizationId: item.organizationId || '',
     }
   })
+}
+
+async function generateDeeplink(apiKey: string, organizationId: string, url: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${LOMADEE_API}/shortener/url`, {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ organizationId, type: 'Custom', url }),
+      signal: AbortSignal.timeout(10000),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    const shortUrl = data?.[0]?.shortUrls?.[0]
+    return shortUrl || null
+  } catch {
+    return null
+  }
 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
@@ -142,15 +160,22 @@ export async function POST(request: Request) {
       return NextResponse.json(resp)
     }
 
-    const produtos = comDesconto.slice(0, limite).map(item => {
+    const selected = comDesconto.slice(0, limite)
+    const produtos = []
+    for (const item of selected) {
       const preco = item.price
       const precoOriginal = item.listPrice
       const descontoPercent = Math.round(((precoOriginal - preco) / precoOriginal) * 100)
       const nichoReal = nichoFromTitulo(item.name || '') ?? nicho
       const thumbnail = item.images?.[0]?.url || ''
-      const linkAfiliado = item.url || ''
       const linkOriginal = item.url || ''
       const seller = item.seller || ''
+
+      let linkAfiliado = linkOriginal
+      if (item.organizationId && linkOriginal) {
+        const deeplink = await generateDeeplink(apiKey, item.organizationId, linkOriginal)
+        if (deeplink) linkAfiliado = deeplink
+      }
 
       const { score, detalhes } = calcularScore({
         vendas: 0,
@@ -161,7 +186,7 @@ export async function POST(request: Request) {
         comissao_percent: 0,
       })
 
-      return {
+      produtos.push({
         titulo: item.name,
         preco,
         preco_original: precoOriginal,
@@ -178,8 +203,8 @@ export async function POST(request: Request) {
         score,
         score_detalhes: detalhes,
         updated_at: new Date().toISOString(),
-      }
-    })
+      })
+    }
 
     const { data: salvos, error } = await supabaseAdmin
       .from('produtos')
