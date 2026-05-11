@@ -40,16 +40,14 @@ const CONFIG: Record<string, {
   shopee: {
     nome: 'Shopee', icon: '🧡', cor: 'rose',
     campos: [
-      { id: 'partner_id', label: 'Partner ID', key: 'partner_id' },
-      { id: 'partner_key', label: 'Partner Key', key: 'partner_key', type: 'password' },
-      { id: 'affiliate_id', label: 'Affiliate ID', key: 'affiliate_id' },
+      { id: 'app_id', label: 'App ID', key: 'app_id' },
+      { id: 'secret', label: 'Secret Key', key: 'secret', type: 'password' },
     ],
     endpoints: [
-      { path: 'GET /v2/product/search_item', desc: 'Busca produtos', status: 'auth' },
-      { path: 'GET /v2/product/get_item_base_info', desc: 'Detalhe produto', status: 'auth' },
-      { path: 'POST /open_api/v1/link/generate', desc: 'Gerar link afiliado', status: 'affiliate' },
+      { path: 'POST /graphql (generateShortLink)', desc: 'Gerar link de afiliado', status: 'affiliate' },
+      { path: 'POST /graphql (productOfferV2)', desc: 'Busca produtos com oferta', status: 'auth' },
     ],
-    dica: 'Cadastre-se em open.shopee.com para API. Para afiliados: affiliate.shopee.com.br'
+    dica: 'API de afiliados Shopee (open-api.affiliate.shopee.com.br). Use App ID e Secret do painel de afiliados.'
   },
   aliexpress: {
     nome: 'AliExpress', icon: '🔴', cor: 'red',
