@@ -7,8 +7,6 @@ export async function GET() {
       { count: totalProdutos },
       { count: totalDisparos },
       { count: totalClicks },
-      { data: produtosPorPlataforma },
-      { data: disparosPorStatus },
       { data: disparosRecentes },
       { data: apiLogs },
       { data: disparosPorDia },
@@ -16,9 +14,6 @@ export async function GET() {
       supabaseAdmin.from('produtos').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('disparos').select('*', { count: 'exact', head: true }),
       supabaseAdmin.from('clicks').select('*', { count: 'exact', head: true }),
-
-      supabaseAdmin.rpc('count_by_column', undefined).then(() => ({ data: null })).catch(() => ({ data: null })),
-      supabaseAdmin.rpc('count_by_column', undefined).then(() => ({ data: null })).catch(() => ({ data: null })),
 
       supabaseAdmin.from('disparos')
         .select('id, produto_id, canal, grupo_nome, status, erro, disparado_em')
