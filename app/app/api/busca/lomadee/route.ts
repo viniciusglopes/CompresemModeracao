@@ -45,7 +45,7 @@ function nichoFromTitulo(titulo: string): string | null {
 
 async function fetchLomadeeProducts(apiKey: string, keyword: string, page: number = 1): Promise<any[]> {
   const params = new URLSearchParams({
-    keyword,
+    search: keyword,
     page: String(page),
     size: '50',
   })
