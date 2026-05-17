@@ -61,21 +61,31 @@ async function saveConfig(config: Partial<DisparoConfig>) {
 
 async function getJaDisparados(): Promise<{ ids: Set<string>; titulos: Set<string> }> {
   const limite = new Date()
-  limite.setHours(limite.getHours() - 24)
+  limite.setHours(limite.getHours() - 48)
+  const limiteISO = limite.toISOString()
 
   const { data } = await supabaseAdmin
-    .from('disparos')
-    .select('produto_id, produtos!inner(titulo)')
-    .gte('disparado_em', limite.toISOString())
-    .eq('status', 'enviado')
+    .from('produtos')
+    .select('id, titulo')
+    .eq('ativo', true)
+    .not('ultimo_disparo_em', 'is', null)
+    .gte('ultimo_disparo_em', limiteISO)
 
   if (!data?.length) return { ids: new Set(), titulos: new Set() }
 
-  const ids = new Set(data.map(d => d.produto_id))
+  const ids = new Set(data.map(d => d.id))
   const titulos = new Set(
-    data.map((d: any) => (d.produtos?.titulo || '').toLowerCase().trim()).filter(Boolean)
+    data.map(d => (d.titulo || '').toLowerCase().trim()).filter(Boolean)
   )
   return { ids, titulos }
+}
+
+async function marcarProdutosDisparados(ids: string[]) {
+  if (!ids.length) return
+  await supabaseAdmin
+    .from('produtos')
+    .update({ ultimo_disparo_em: new Date().toISOString() })
+    .in('id', ids)
 }
 
 async function buscarProdutos(
@@ -85,13 +95,17 @@ async function buscarProdutos(
   idsJaDisparados: Set<string>,
   titulosJaDisparados: Set<string>
 ): Promise<{ produtos: any[]; nichosUsados: string[]; ultimoNichoIdx: number }> {
-  // Busca todos os produtos elegíveis de uma vez (todas plataformas e nichos)
+  const limite48h = new Date()
+  limite48h.setHours(limite48h.getHours() - 48)
+  const limiteISO = limite48h.toISOString()
+
   const { data: todosML } = await supabaseAdmin
     .from('produtos')
     .select('*')
     .eq('ativo', true)
     .in('plataforma', ['mercadolivre', 'lomadee', 'awin'])
     .gte('desconto_percent', config.desconto_minimo_ml)
+    .or(`ultimo_disparo_em.is.null,ultimo_disparo_em.lt.${limiteISO}`)
     .order('desconto_percent', { ascending: false })
     .limit(100)
 
@@ -101,6 +115,7 @@ async function buscarProdutos(
     .eq('ativo', true)
     .eq('plataforma', 'shopee')
     .gte('score', config.score_minimo_shopee)
+    .or(`ultimo_disparo_em.is.null,ultimo_disparo_em.lt.${limiteISO}`)
     .order('score', { ascending: false })
     .limit(50)
 
@@ -304,6 +319,9 @@ export async function POST(request: Request) {
   if (registros.length > 0) {
     await supabaseAdmin.from('disparos').insert(registros)
   }
+
+  const idsEnviados = produtosDisparados.map(p => p.id)
+  await marcarProdutosDisparados(idsEnviados)
 
   await saveConfig({
     ultimo_nicho_idx: resultado.ultimoNichoIdx,
