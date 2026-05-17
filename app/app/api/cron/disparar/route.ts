@@ -59,6 +59,36 @@ async function saveConfig(config: Partial<DisparoConfig>) {
     }, { onConflict: 'plataforma' })
 }
 
+function normalizarTitulo(titulo: string): string {
+  return titulo
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function extrairPalavrasChave(titulo: string): Set<string> {
+  const stopWords = new Set(['de', 'do', 'da', 'dos', 'das', 'com', 'para', 'por', 'em', 'e', 'a', 'o', 'um', 'uma', 'no', 'na', 'ao', 'os', 'as'])
+  return new Set(
+    normalizarTitulo(titulo)
+      .split(' ')
+      .filter(w => w.length > 2 && !stopWords.has(w))
+  )
+}
+
+function titulosSimilares(t1: string, t2: string): boolean {
+  const palavras1 = extrairPalavrasChave(t1)
+  const palavras2 = extrairPalavrasChave(t2)
+  if (palavras1.size === 0 || palavras2.size === 0) return false
+  let intersecao = 0
+  for (const w of palavras1) {
+    if (palavras2.has(w)) intersecao++
+  }
+  const menor = Math.min(palavras1.size, palavras2.size)
+  return intersecao / menor >= 0.6
+}
+
 async function getJaDisparados(): Promise<{ ids: Set<string>; titulos: Set<string> }> {
   const limite = new Date()
   limite.setHours(limite.getHours() - 48)
@@ -131,15 +161,21 @@ async function buscarProdutos(
   const produtos: any[] = []
   const nichosUsados: string[] = []
   const usados = new Set<string>()
+  const titulosSelecionados: string[] = []
 
   const nichoOrder = [...TODOS_NICHOS.slice(nichoIdx), ...TODOS_NICHOS.slice(0, nichoIdx)]
 
   for (const nicho of nichoOrder) {
     if (produtos.length >= quantidade) break
-    const doNicho = disponiveis.find(p => p.nicho === nicho && !usados.has(p.id))
+    const doNicho = disponiveis.find(p =>
+      p.nicho === nicho &&
+      !usados.has(p.id) &&
+      !titulosSelecionados.some(t => titulosSimilares(p.titulo, t))
+    )
     if (doNicho) {
       produtos.push(doNicho)
       usados.add(doNicho.id)
+      titulosSelecionados.push(doNicho.titulo)
       if (!nichosUsados.includes(nicho)) nichosUsados.push(nicho)
     }
   }
@@ -148,8 +184,10 @@ async function buscarProdutos(
   for (const p of disponiveis) {
     if (produtos.length >= quantidade) break
     if (usados.has(p.id)) continue
+    if (titulosSelecionados.some(t => titulosSimilares(p.titulo, t))) continue
     produtos.push(p)
     usados.add(p.id)
+    titulosSelecionados.push(p.titulo)
     if (!nichosUsados.includes(p.nicho)) nichosUsados.push(p.nicho)
   }
 
