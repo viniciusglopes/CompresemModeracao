@@ -39,6 +39,8 @@ export default function ProdutosPage() {
   const [plataformaBusca, setPlataformaBusca] = useState<'mercadolivre' | 'shopee' | 'aliexpress' | 'amazon' | 'lomadee' | 'awin'>('mercadolivre')
   const [msg, setMsg] = useState<{ type: 'success' | 'error' | 'info', text: string } | null>(null)
   const [stats, setStats] = useState<{ total: number; salvos?: number } | null>(null)
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
+  const [excluindo, setExcluindo] = useState(false)
 
   useEffect(() => {
     fetch('/api/busca/nichos')
@@ -50,24 +52,21 @@ export default function ProdutosPage() {
   const loadProdutos = useCallback(async () => {
     setLoading(true)
     try {
-      const plataforma = plataformaFiltro || 'mercadolivre'
-      const params = new URLSearchParams({ plataforma, limit: '200' })
-      if (nichoFiltro) params.set('nicho', nichoFiltro)
-      // Se sem filtro de plataforma, busca ambas
+      const nichoParam = nichoFiltro ? `&nicho=${nichoFiltro}` : ''
       if (!plataformaFiltro) {
         const [r1, r2, r3, r4, r5, r6] = await Promise.all([
-          fetch(`/api/busca/mercadolivre?plataforma=mercadolivre&limit=100`).then(r => r.json()),
-          fetch(`/api/busca/mercadolivre?plataforma=shopee&limit=100`).then(r => r.json()),
-          fetch(`/api/busca/mercadolivre?plataforma=aliexpress&limit=100`).then(r => r.json()),
-          fetch(`/api/busca/mercadolivre?plataforma=amazon&limit=100`).then(r => r.json()),
-          fetch(`/api/busca/mercadolivre?plataforma=lomadee&limit=100`).then(r => r.json()),
-          fetch(`/api/busca/mercadolivre?plataforma=awin&limit=100`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=mercadolivre&limit=100${nichoParam}`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=shopee&limit=100${nichoParam}`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=aliexpress&limit=100${nichoParam}`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=amazon&limit=100${nichoParam}`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=lomadee&limit=100${nichoParam}`).then(r => r.json()),
+          fetch(`/api/busca/mercadolivre?plataforma=awin&limit=100${nichoParam}`).then(r => r.json()),
         ])
         setProdutos([...(r1.produtos || []), ...(r2.produtos || []), ...(r3.produtos || []), ...(r4.produtos || []), ...(r5.produtos || []), ...(r6.produtos || [])])
       } else {
         const endpointMap: Record<string, string> = { shopee: '/api/busca/mercadolivre?plataforma=shopee', aliexpress: '/api/busca/mercadolivre?plataforma=aliexpress', amazon: '/api/busca/mercadolivre?plataforma=amazon', lomadee: '/api/busca/mercadolivre?plataforma=lomadee', awin: '/api/busca/mercadolivre?plataforma=awin', mercadolivre: '/api/busca/mercadolivre' }
-        const endpoint = endpointMap[plataforma] || '/api/busca/mercadolivre'
-        const res = await fetch(`${endpoint}?${params}`)
+        const endpoint = endpointMap[plataformaFiltro] || '/api/busca/mercadolivre'
+        const res = await fetch(`${endpoint}?limit=200${nichoParam}`)
         const data = await res.json()
         setProdutos(data.produtos || [])
       }
@@ -107,10 +106,65 @@ export default function ProdutosPage() {
     }
   }
 
+  const toggleSelect = (id: string) => {
+    setSelecionados(prev => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  const selectAll = () => {
+    if (selecionados.size === produtosFiltrados.length && produtosFiltrados.length > 0) {
+      setSelecionados(new Set())
+    } else {
+      setSelecionados(new Set(produtosFiltrados.map(p => p.id)))
+    }
+  }
+
+  const handleExcluir = async (id: string, titulo: string) => {
+    if (!confirm(`Excluir "${titulo.slice(0, 60)}..."?`)) return
+    try {
+      const res = await fetch(`/api/produtos/${id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setProdutos(prev => prev.filter(p => p.id !== id))
+      setSelecionados(prev => { const n = new Set(prev); n.delete(id); return n })
+      setMsg({ type: 'success', text: 'Produto excluido!' })
+      setTimeout(() => setMsg(null), 3000)
+    } catch (e: any) {
+      setMsg({ type: 'error', text: e.message })
+    }
+  }
+
+  const handleExcluirMassa = async () => {
+    if (selecionados.size === 0) return
+    if (!confirm(`Excluir ${selecionados.size} produto(s)?`)) return
+    setExcluindo(true)
+    try {
+      const res = await fetch('/api/produtos/batch', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selecionados) }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setProdutos(prev => prev.filter(p => !selecionados.has(p.id)))
+      setMsg({ type: 'success', text: `${data.excluidos} produtos excluidos!` })
+      setSelecionados(new Set())
+    } catch (e: any) {
+      setMsg({ type: 'error', text: e.message })
+    } finally {
+      setExcluindo(false)
+      setTimeout(() => setMsg(null), 4000)
+    }
+  }
+
   const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
   const nichoAtual = nichos.find(n => n.id === nichoBusca)
   const nichosComProdutos = [...new Set(produtos.map(p => p.nicho))]
+  const produtosFiltrados = nichoFiltro ? produtos.filter(p => p.nicho === nichoFiltro) : produtos
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -127,8 +181,8 @@ export default function ProdutosPage() {
           <CardTitle className="text-sm font-semibold text-gray-700">🔍 Buscar novos produtos</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Seleção de plataforma */}
-          <div className="flex gap-2 mb-3">
+          {/* Selecao de plataforma */}
+          <div className="flex gap-2 mb-3 flex-wrap">
             {[
               { id: 'mercadolivre', label: '🛒 Mercado Livre' },
               { id: 'shopee', label: '🧡 Shopee' },
@@ -186,15 +240,14 @@ export default function ProdutosPage() {
         </CardContent>
       </Card>
 
-      {/* Filtros por nicho */}
       {/* Filtro por plataforma */}
-      <div className="flex gap-2 mb-3">
+      <div className="flex gap-2 mb-3 flex-wrap">
         {[
-          { id: '', label: '🔀 Todas as plataformas' },
+          { id: '', label: '🔀 Todas' },
           { id: 'mercadolivre', label: '🛒 Mercado Livre' },
           { id: 'shopee', label: '🧡 Shopee' },
-          { id: 'aliexpress', label: '🔴 AliExpress' },
           { id: 'amazon', label: '📦 Amazon' },
+          { id: 'aliexpress', label: '🔴 AliExpress' },
           { id: 'lomadee', label: '🏬 Lomadee' },
           { id: 'awin', label: '🌐 AWIN' },
         ].map(p => (
@@ -227,69 +280,110 @@ export default function ProdutosPage() {
         })}
       </div>
 
+      {/* Acoes de selecao */}
+      <div className="flex items-center gap-3 mb-3">
+        <button onClick={selectAll} className="text-xs text-rose-600 hover:underline">
+          {selecionados.size === produtosFiltrados.length && produtosFiltrados.length > 0 ? 'Desmarcar todos' : `Selecionar todos (${produtosFiltrados.length})`}
+        </button>
+        {selecionados.size > 0 && (
+          <>
+            <span className="text-gray-300">|</span>
+            <button onClick={() => setSelecionados(new Set())} className="text-xs text-gray-500 hover:underline">
+              Limpar selecao ({selecionados.size})
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Grid de produtos */}
       {loading ? (
         <div className="text-center py-12 text-gray-400">Carregando...</div>
-      ) : produtos.length === 0 ? (
+      ) : produtosFiltrados.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-400 text-sm">Nenhum produto encontrado.</p>
-          <p className="text-gray-400 text-xs mt-1">Selecione uma categoria e clique em "Buscar no ML".</p>
+          <p className="text-gray-400 text-xs mt-1">Selecione uma categoria e clique em "Buscar".</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {produtos.map(p => {
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {produtosFiltrados.map(p => {
             const nichoInfo = nichos.find(n => n.id === p.nicho)
+            const selecionado = selecionados.has(p.id)
+            const platColors: Record<string, string> = { mercadolivre: 'border-yellow-300 text-yellow-700', shopee: 'border-rose-300 text-rose-600', aliexpress: 'border-red-300 text-red-700', amazon: 'border-orange-300 text-orange-700', lomadee: 'border-green-300 text-green-700', awin: 'border-purple-300 text-purple-700' }
+            const platIcons: Record<string, string> = { mercadolivre: '🛒 ML', shopee: '🧡 Shopee', aliexpress: '🔴 AliExpress', amazon: '📦 Amazon', lomadee: '🏬 Lomadee', awin: '🌐 AWIN' }
             return (
-              <Card key={p.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                <div className="flex gap-3 p-4">
+              <div key={p.id} onClick={() => toggleSelect(p.id)}
+                className={`cursor-pointer rounded-xl border-2 transition-all overflow-hidden ${
+                  selecionado ? 'border-rose-400 bg-rose-50 shadow-md' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                }`}>
+                <div className="flex gap-3 p-3">
+                  <div className="flex items-start pt-0.5 shrink-0">
+                    <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${
+                      selecionado ? 'bg-rose-500 border-rose-500' : 'border-gray-300'
+                    }`}>
+                      {selecionado && <span className="text-white text-xs font-bold">✓</span>}
+                    </div>
+                  </div>
                   {p.thumbnail && (
                     <img src={p.thumbnail} alt={p.titulo}
-                      className="w-20 h-20 object-contain rounded-lg bg-gray-50 shrink-0" />
+                      className="w-16 h-16 object-contain rounded-lg bg-gray-50 shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 line-clamp-2 leading-snug">{p.titulo}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-lg font-bold text-green-700">{fmt(p.preco)}</span>
+                    <p className="text-xs font-medium text-gray-800 line-clamp-2 leading-snug">{p.titulo}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-base font-bold text-green-700">{fmt(p.preco)}</span>
                       <span className="text-xs text-gray-400 line-through">{fmt(p.preco_original)}</span>
                     </div>
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      <Badge className="bg-red-100 text-red-700 hover:bg-red-100 text-xs">
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      <Badge className="bg-red-100 text-red-700 hover:bg-red-100 text-xs px-1.5 py-0">
                         -{p.desconto_percent}%
                       </Badge>
                       {p.frete_gratis && (
-                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs">
-                          Frete grátis
+                        <Badge className="bg-green-100 text-green-700 hover:bg-green-100 text-xs px-1.5 py-0">
+                          Frete gratis
                         </Badge>
                       )}
                       {nichoInfo && (
-                        <Badge variant="secondary" className="text-xs">
+                        <Badge variant="secondary" className="text-xs px-1.5 py-0">
                           {nichoInfo.emoji} {nichoInfo.label}
                         </Badge>
                       )}
-                      <Badge variant="outline" className={`text-xs ${
-                        ({ mercadolivre: 'border-yellow-300 text-yellow-700', shopee: 'border-rose-300 text-rose-600', lomadee: 'border-green-300 text-green-700', awin: 'border-purple-300 text-purple-700' } as Record<string, string>)[p.plataforma] || 'border-gray-300 text-gray-600'
-                      }`}>
-                        {({ mercadolivre: '🛒 ML', shopee: '🧡 Shopee', lomadee: '🏬 Lomadee', awin: '🌐 AWIN' } as Record<string, string>)[p.plataforma] || p.plataforma}
+                      <Badge variant="outline" className={`text-xs px-1.5 py-0 ${platColors[p.plataforma] || 'border-gray-300 text-gray-600'}`}>
+                        {platIcons[p.plataforma] || p.plataforma}
                       </Badge>
                     </div>
-                    {p.qtd_vendida > 0 && (
-                      <p className="text-xs text-gray-400 mt-1">{p.qtd_vendida} vendidos</p>
-                    )}
                   </div>
                 </div>
-                <div className="px-4 pb-3 flex gap-2">
+                <div className="px-3 pb-2.5 flex gap-2" onClick={e => e.stopPropagation()}>
                   <a href={p.link_afiliado || p.link_original} target="_blank" rel="noopener noreferrer"
                     className="flex-1 text-center text-xs py-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-lg transition-colors">
-                    🔗 Link Afiliado
+                    🔗 Afiliado
                   </a>
                   <a href={p.link_original} target="_blank" rel="noopener noreferrer"
                     className="px-3 text-xs py-1.5 border text-gray-600 hover:bg-gray-50 rounded-lg transition-colors">
                     Ver
                   </a>
+                  <button onClick={() => handleExcluir(p.id, p.titulo)}
+                    className="px-3 text-xs py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                    🗑️
+                  </button>
                 </div>
-              </Card>
+              </div>
             )
           })}
+        </div>
+      )}
+
+      {/* Barra flutuante de selecao */}
+      {selecionados.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-4 z-50">
+          <span className="text-sm font-medium">{selecionados.size} produto{selecionados.size > 1 ? 's' : ''}</span>
+          <Button onClick={handleExcluirMassa} disabled={excluindo}
+            className="bg-red-500 hover:bg-red-400 text-white text-sm h-8 px-4">
+            {excluindo ? '⏳' : '🗑️'} Excluir selecionados
+          </Button>
+          <button onClick={() => setSelecionados(new Set())} className="text-gray-400 hover:text-white text-sm">
+            ✕
+          </button>
         </div>
       )}
     </div>

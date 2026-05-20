@@ -45,6 +45,7 @@ export default function OfertasPage() {
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [enviando, setEnviando] = useState(false)
+  const [excluindo, setExcluindo] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   // Modal de edição de categoria
@@ -167,6 +168,45 @@ export default function OfertasPage() {
     } finally {
       setEnviando(false)
       setTimeout(() => setMsg(null), 5000)
+    }
+  }
+
+  const handleExcluir = async (e: React.MouseEvent, id: string, titulo: string) => {
+    e.stopPropagation()
+    if (!confirm(`Excluir "${titulo.slice(0, 60)}..."?`)) return
+    try {
+      const res = await fetch(`/api/produtos/${id}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setProdutos(prev => prev.filter(p => p.id !== id))
+      setSelecionados(prev => { const n = new Set(prev); n.delete(id); return n })
+      setMsg({ type: 'success', text: 'Produto excluido!' })
+      setTimeout(() => setMsg(null), 3000)
+    } catch (e: any) {
+      setMsg({ type: 'error', text: (e as Error).message })
+    }
+  }
+
+  const handleExcluirMassa = async () => {
+    if (selecionados.size === 0) return
+    if (!confirm(`Excluir ${selecionados.size} produto(s)?`)) return
+    setExcluindo(true)
+    try {
+      const res = await fetch('/api/produtos/batch', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selecionados) }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setProdutos(prev => prev.filter(p => !selecionados.has(p.id)))
+      setMsg({ type: 'success', text: `${data.excluidos} produtos excluidos!` })
+      setSelecionados(new Set())
+    } catch (e: any) {
+      setMsg({ type: 'error', text: (e as Error).message })
+    } finally {
+      setExcluindo(false)
+      setTimeout(() => setMsg(null), 4000)
     }
   }
 
@@ -456,6 +496,11 @@ export default function OfertasPage() {
                     title="Editar categoria">
                     ✏️
                   </button>
+                  <button onClick={e => handleExcluir(e, p.id, p.titulo)}
+                    className="px-3 text-xs py-1.5 border border-red-200 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Excluir produto">
+                    🗑️
+                  </button>
                 </div>
               </div>
             )
@@ -514,7 +559,11 @@ export default function OfertasPage() {
           <span className="text-sm font-medium">{selecionados.size} produto{selecionados.size > 1 ? 's' : ''} selecionado{selecionados.size > 1 ? 's' : ''}</span>
           <Button onClick={handleEnviar} disabled={enviando}
             className="bg-green-500 hover:bg-green-400 text-white text-sm h-8 px-4">
-            {enviando ? '⏳' : '📤'} Marcar como enviado
+            {enviando ? '⏳' : '📤'} Enviar
+          </Button>
+          <Button onClick={handleExcluirMassa} disabled={excluindo}
+            className="bg-red-500 hover:bg-red-400 text-white text-sm h-8 px-4">
+            {excluindo ? '⏳' : '🗑️'} Excluir
           </Button>
           <button onClick={() => setSelecionados(new Set())} className="text-gray-400 hover:text-white text-sm">
             ✕
