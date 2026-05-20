@@ -25,6 +25,55 @@ const AWIN_DOMAINS: Record<string, { id: string; nome: string }> = {
   'lacoste.com.br': { id: '112756', nome: 'Lacoste' },
 }
 
+// ─── Resolve short URLs (amzn.to, a.co, etc.) ───────────────────────────────
+
+async function resolverUrlCurta(url: string): Promise<string> {
+  try {
+    const u = new URL(url)
+    const host = u.hostname.toLowerCase()
+    if (host === 'amzn.to' || host === 'a.co') {
+      const res = await fetch(url, {
+        method: 'HEAD',
+        redirect: 'follow',
+        signal: AbortSignal.timeout(8000),
+      })
+      return res.url || url
+    }
+  } catch {}
+  return url
+}
+
+// ─── Extrai ASIN de qualquer URL Amazon ──────────────────────────────────────
+
+function extrairAsin(url: string): string | null {
+  try {
+    const u = new URL(url)
+    const path = u.pathname
+    const m = path.match(/\/dp\/([A-Z0-9]{10})/i)
+      || path.match(/\/gp\/product\/([A-Z0-9]{10})/i)
+      || path.match(/\/product\/([A-Z0-9]{10})/i)
+      || path.match(/\/ASIN\/([A-Z0-9]{10})/i)
+      || path.match(/\/([A-Z0-9]{10})(?:\/|$)/)
+    if (m && /^[A-Z0-9]{10}$/i.test(m[1])) return m[1].toUpperCase()
+  } catch {}
+  return null
+}
+
+// ─── Gera link de afiliado Amazon ────────────────────────────────────────────
+
+function gerarLinkAfiliadoAmazon(asin: string, tag: string): string {
+  return `https://www.amazon.com.br/dp/${asin}?tag=${tag}`
+}
+
+async function getAmazonAffiliateTag(): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from('config_plataformas')
+    .select('credenciais')
+    .eq('plataforma', 'amazon')
+    .single()
+  return data?.credenciais?.affiliate_tag || ''
+}
+
 // ─── Detecta plataforma e extrai ID da URL ───────────────────────────────────
 
 function detectarPlataforma(url: string): { plataforma: string; produtoId: string | null; awinMerchantId?: string; awinNome?: string } {
@@ -48,9 +97,9 @@ function detectarPlataforma(url: string): { plataforma: string; produtoId: strin
       return { plataforma: 'shopee', produtoId: null }
     }
 
-    if (host.includes('amazon') || host.includes('amzn')) {
-      const asin = path.match(/\/dp\/([A-Z0-9]{10})/i) || path.match(/\/gp\/product\/([A-Z0-9]{10})/i)
-      if (asin) return { plataforma: 'amazon', produtoId: asin[1] }
+    if (host.includes('amazon') || host.includes('amzn') || host === 'a.co') {
+      const asin = extrairAsin(url)
+      if (asin) return { plataforma: 'amazon', produtoId: asin }
       return { plataforma: 'amazon', produtoId: null }
     }
 
@@ -186,36 +235,76 @@ async function fetchMlProduto(produtoId: string, token: string) {
 
 // ─── Scraping genérico via Open Graph / JSON-LD ───────────────────────────────
 
-async function fetchHtml(url: string, ua: string): Promise<string> {
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0',
+]
+
+function randomUA(): string {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)]
+}
+
+async function fetchHtml(url: string, ua: string, extraHeaders?: Record<string, string>): Promise<string> {
   const res = await fetch(url, {
-    headers: { 'User-Agent': ua, 'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'pt-BR,pt;q=0.9' },
+    headers: {
+      'User-Agent': ua,
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.5',
+      'Accept-Encoding': 'identity',
+      'Cache-Control': 'no-cache',
+      ...extraHeaders,
+    },
     cache: 'no-store',
-    signal: AbortSignal.timeout(12000),
+    signal: AbortSignal.timeout(15000),
     redirect: 'follow',
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.text()
 }
 
-async function scrapeUrl(url: string) {
-  let html = ''
-  try {
-    html = await fetchHtml(url, 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)')
-  } catch {
-    try {
-      html = await fetchHtml(url, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-    } catch {
-      html = await fetchHtml(`https://web.archive.org/web/2024/${url}`, 'Mozilla/5.0')
-    }
+async function fetchHtmlWithRetry(url: string, isAmazon: boolean): Promise<string> {
+  const amazonHeaders = {
+    'Cookie': 'i18n-prefs=BRL; lc-acbbr=pt_BR',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
   }
 
+  const attempts = isAmazon
+    ? [
+        { ua: randomUA(), headers: amazonHeaders },
+        { ua: randomUA(), headers: amazonHeaders },
+        { ua: 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)', headers: {} },
+      ]
+    : [
+        { ua: 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)', headers: {} },
+        { ua: randomUA(), headers: {} },
+      ]
+
+  let lastError: Error | null = null
+  for (let i = 0; i < attempts.length; i++) {
+    try {
+      if (i > 0) await new Promise(r => setTimeout(r, 1000 * i))
+      const html = await fetchHtml(url, attempts[i].ua, attempts[i].headers)
+      if (html.length > 5000) return html
+    } catch (e: any) {
+      lastError = e
+    }
+  }
+  throw lastError || new Error('Scraping falhou após todas as tentativas')
+}
+
+function parseHtmlMeta(html: string) {
   const meta = (name: string) => {
     const m = html.match(new RegExp(`<meta[^>]+(?:name|property)=["']${name}["'][^>]+content=["']([^"']+)["']`, 'i'))
       || html.match(new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:name|property)=["']${name}["']`, 'i'))
     return m?.[1] || null
   }
 
-  // JSON-LD — tenta todos os blocos no HTML
   let jsonLd: any = null
   const ldMatches = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)]
   for (const match of ldMatches) {
@@ -226,6 +315,65 @@ async function scrapeUrl(url: string) {
       if (prod) { jsonLd = prod; break }
     } catch {}
   }
+
+  return { meta, jsonLd }
+}
+
+function scrapeAmazonHtml(html: string): { titulo: string; thumbnail: string; preco: number; precoOriginal: number } {
+  const { meta, jsonLd } = parseHtmlMeta(html)
+
+  const titulo = (jsonLd?.name || meta('og:title') || meta('twitter:title') || '')
+    .replace(/\s*[\|–—]\s*Amazon.*$/i, '').replace(/\s*:\s*Amazon.*$/i, '').trim()
+    || (html.match(/id="productTitle"[^>]*>\s*([^<]+)/)?.[1] || '').trim()
+
+  const thumbnail = (Array.isArray(jsonLd?.image) ? jsonLd.image[0] : jsonLd?.image)
+    || meta('og:image') || meta('twitter:image')
+    || (html.match(/id="landingImage"[^>]+src="([^"]+)"/)?.[1])
+    || (html.match(/data-old-hires="([^"]+)"/)?.[1])
+    || ''
+
+  let preco = 0
+  let precoOriginal = 0
+
+  // JSON-LD
+  if (jsonLd?.offers) {
+    const offers = Array.isArray(jsonLd.offers) ? jsonLd.offers : [jsonLd.offers]
+    const offer = offers[0]
+    preco = parseFloat(String(offer?.price || offer?.lowPrice || '0').replace(',', '.')) || 0
+    precoOriginal = parseFloat(String(offer?.highPrice || '0').replace(',', '.')) || preco
+  }
+
+  // Amazon-specific price patterns
+  if (!preco) {
+    const priceWhole = html.match(/class="a-price-whole"[^>]*>(\d[\d.]*)</)?.[1]
+    const priceFraction = html.match(/class="a-price-fraction"[^>]*>(\d+)/)?.[1] || '00'
+    if (priceWhole) {
+      preco = parseFloat(priceWhole.replace(/\./g, '') + '.' + priceFraction) || 0
+    }
+  }
+
+  // Amazon original price (riscado)
+  if (!precoOriginal || precoOriginal <= preco) {
+    const basisMatch = html.match(/class="basisPrice"[\s\S]*?class="a-price-whole"[^>]*>(\d[\d.]*)</)
+      || html.match(/class="a-text-price"[^>]*>\s*<span[^>]*>R\$\s*([\d.,]+)</)
+    if (basisMatch) {
+      const orig = parseFloat(basisMatch[1].replace(/\./g, '').replace(',', '.')) || 0
+      if (orig > preco) precoOriginal = orig
+    }
+  }
+
+  if (!precoOriginal) precoOriginal = preco
+
+  return { titulo, thumbnail: typeof thumbnail === 'string' ? thumbnail : '', preco, precoOriginal }
+}
+
+async function scrapeUrl(url: string, plataforma?: string) {
+  const isAmazon = plataforma === 'amazon' || /amazon|amzn/.test(url)
+  const html = await fetchHtmlWithRetry(url, isAmazon)
+
+  if (isAmazon) return scrapeAmazonHtml(html)
+
+  const { meta, jsonLd } = parseHtmlMeta(html)
 
   const titulo = (jsonLd?.name || meta('og:title') || meta('twitter:title') || '')
     .replace(/\s*[|–-]\s*(Nike|Shopee|Amazon|AliExpress|Natura|Boticário|Renner|Adidas|Centauro|Vivara)\s*$/, '')
@@ -347,7 +495,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
     const {
-      url,
+      url: urlRaw,
       nicho: nichoOverride,
       link_afiliado,
       apenas_preview,
@@ -362,7 +510,10 @@ export async function POST(request: Request) {
     const precoManual = Number(precoBody || preco_override) || 0
     const precoOrigManual = Number(precoOriginalBody || preco_original_override) || 0
 
-    if (!url) return NextResponse.json({ error: 'url é obrigatório' }, { status: 400 })
+    if (!urlRaw) return NextResponse.json({ error: 'url é obrigatório' }, { status: 400 })
+
+    // Resolve URLs curtas (amzn.to, a.co) antes de processar
+    const url = await resolverUrlCurta(urlRaw.trim())
 
     let { plataforma, produtoId, awinMerchantId, awinNome } = detectarPlataforma(url)
 
@@ -387,6 +538,7 @@ export async function POST(request: Request) {
     let shopeeInfo: { detectado: boolean; link_afiliado?: string } = { detectado: false }
     let linkAfiliado = link_afiliado || ''
 
+    // ── AWIN: gera link de afiliado ──
     if (plataforma === 'awin' && awinMerchantId) {
       const { data: cfg } = await supabaseAdmin
         .from('config_plataformas')
@@ -406,6 +558,7 @@ export async function POST(request: Request) {
       }
     }
 
+    // ── Shopee: gera link de afiliado ──
     if (plataforma === 'shopee') {
       const { data: cfg } = await supabaseAdmin
         .from('config_plataformas')
@@ -425,17 +578,45 @@ export async function POST(request: Request) {
       }
     }
 
+    // ── Amazon: gera link de afiliado automaticamente ──
+    let amazonAutoAffiliate = false
+    let amazonTagMissing = false
+    if (plataforma === 'amazon' && produtoId && !link_afiliado) {
+      const tag = await getAmazonAffiliateTag()
+      if (tag) {
+        linkAfiliado = gerarLinkAfiliadoAmazon(produtoId, tag)
+        amazonAutoAffiliate = true
+      } else {
+        amazonTagMissing = true
+      }
+    }
+
     let dados: any = null
 
-    if (plataforma === 'mercadolivre' && produtoId) {
+    // ── Dados manuais: titulo/preco enviados direto (Cowork/automação) ──
+    if (tituloOverride) {
+      dados = {
+        titulo: tituloOverride,
+        preco: precoManual,
+        preco_original: precoOrigManual || precoManual,
+        thumbnail: thumbnailOverride || '',
+        permalink: url,
+        domain_id: '',
+        produto_id_externo: produtoId || `awin_${awinMerchantId || 'manual'}_${createHash('sha256').update(url).digest('hex').slice(0, 16)}`,
+      }
+    }
+
+    // ── Mercado Livre: usa API oficial ──
+    if (!dados && plataforma === 'mercadolivre' && produtoId) {
       const token = await getMlAccessToken()
       if (!token) return NextResponse.json({ error: 'Token ML não disponível' }, { status: 400 })
       dados = await fetchMlProduto(produtoId, token)
     }
 
+    // ── Outros ou fallback: scraping ──
     if (!dados) {
       try {
-        const scraped = await scrapeUrl(url)
+        const scraped = await scrapeUrl(url, plataforma)
         dados = {
           titulo: scraped.titulo,
           preco: scraped.preco,
@@ -453,10 +634,11 @@ export async function POST(request: Request) {
           thumbnail: '',
           permalink: url,
           domain_id: '',
-          produto_id_externo: `awin_${awinMerchantId || 'manual'}_${createHash('sha256').update(url).digest('hex').slice(0, 16)}`,
+          produto_id_externo: produtoId || `awin_${awinMerchantId || 'manual'}_${createHash('sha256').update(url).digest('hex').slice(0, 16)}`,
         }
       }
 
+      // AWIN fallback: busca no ML se scraping falhou
       if (plataforma === 'awin' && (!dados.titulo || !dados.thumbnail)) {
         const termos = extrairTermosDaUrl(url)
         if (termos) {
@@ -470,13 +652,12 @@ export async function POST(request: Request) {
       }
     }
 
-    if (tituloOverride) dados.titulo = tituloOverride
-    if (thumbnailOverride) dados.thumbnail = thumbnailOverride
+    if (thumbnailOverride && !tituloOverride) dados.thumbnail = thumbnailOverride
     if (precoManual > 0) dados.preco = precoManual
     if (precoOrigManual > 0) dados.preco_original = precoOrigManual
 
     if (!dados?.titulo && plataforma !== 'awin') {
-      return NextResponse.json({ error: 'Não foi possível obter informações do produto nesta URL.' }, { status: 422 })
+      return NextResponse.json({ error: 'Scraping falhou (Amazon bloqueia o IP do servidor). Envie os dados direto: titulo, preco, preco_original, thumbnail junto com a url.' }, { status: 422 })
     }
 
     const desconto = dados.preco_original > dados.preco && dados.preco > 0
@@ -503,8 +684,13 @@ export async function POST(request: Request) {
       ...(awinNome && { loja_nome: awinNome }),
     }
 
+    const resp: any = { preview: produto, awin_info: awinInfo, shopee_info: shopeeInfo }
+
+    if (amazonAutoAffiliate) resp.amazon_auto_affiliate = true
+    if (amazonTagMissing) resp.amazon_tag_missing = true
+
     if (apenas_preview) {
-      return NextResponse.json({ preview: produto, awin_info: awinInfo, shopee_info: shopeeInfo })
+      return NextResponse.json(resp)
     }
 
     if (!produto.titulo) {
@@ -519,7 +705,7 @@ export async function POST(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-    return NextResponse.json({ ok: true, produto: { ...produto, id: salvo?.id }, awin_info: awinInfo, shopee_info: shopeeInfo })
+    return NextResponse.json({ ok: true, produto: { ...produto, id: salvo?.id }, ...resp })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }

@@ -29,8 +29,8 @@ const PLATAFORMAS = [
   { id: '', label: 'Todas' },
   { id: 'mercadolivre', label: '🛒 ML' },
   { id: 'shopee', label: '🧡 Shopee' },
-  { id: 'aliexpress', label: '🔴 AliExpress' },
   { id: 'amazon', label: '📦 Amazon' },
+  { id: 'aliexpress', label: '🔴 AliExpress' },
   { id: 'lomadee', label: '🏬 Lomadee' },
   { id: 'awin', label: '🌐 AWIN' },
 ]
@@ -61,7 +61,7 @@ export default function OfertasPage() {
   const [descontoMin, setDescontoMin] = useState(0)
   const [descontoMax, setDescontoMax] = useState(100)
   const [statusFiltro, setStatusFiltro] = useState<'todos' | 'pendentes' | 'enviados'>('todos')
-  const [sortBy, setSortBy] = useState<'desconto' | 'data' | 'preco' | 'score'>('score')
+  const [sortBy, setSortBy] = useState<'desconto' | 'data' | 'preco' | 'score'>('data')
 
   useEffect(() => {
     fetch('/api/busca/nichos').then(r => r.json()).then(d => setNichos(d.nichos || []))

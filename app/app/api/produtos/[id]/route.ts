@@ -39,8 +39,23 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
+
+  // Exclusão em massa: DELETE /api/produtos/batch via body { ids: [...] }
+  if (id === 'batch') {
+    try {
+      const body = await request.json()
+      const ids: string[] = body.ids
+      if (!ids?.length) return NextResponse.json({ error: 'ids é obrigatório' }, { status: 400 })
+      const { error } = await supabaseAdmin.from('produtos').delete().in('id', ids)
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ ok: true, excluidos: ids.length })
+    } catch (e: any) {
+      return NextResponse.json({ error: e.message }, { status: 500 })
+    }
+  }
+
   const { error } = await supabaseAdmin.from('produtos').delete().eq('id', id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

@@ -22,6 +22,7 @@ interface DisparoConfig {
   ultimo_nicho_idx: number
   ultimo_disparo: string | null
   ativo: boolean
+  palavras_bloqueadas: string[]
 }
 
 const CONFIG_PADRAO: DisparoConfig = {
@@ -36,6 +37,7 @@ const CONFIG_PADRAO: DisparoConfig = {
   ultimo_nicho_idx: 0,
   ultimo_disparo: null,
   ativo: true,
+  palavras_bloqueadas: [],
 }
 
 async function getConfig(): Promise<DisparoConfig> {
@@ -89,25 +91,38 @@ function titulosSimilares(t1: string, t2: string): boolean {
   return intersecao / menor >= 0.6
 }
 
-async function getJaDisparados(): Promise<{ ids: Set<string>; titulos: Set<string> }> {
+function produtoSimilarExiste(titulo: string, preco: number, lista: Array<{ titulo: string; preco: number }>): boolean {
+  for (const item of lista) {
+    if (titulosSimilares(titulo, item.titulo)) return true
+  }
+  return false
+}
+
+interface DisparadoInfo { titulo: string; preco: number }
+
+async function getJaDisparados(): Promise<{ ids: Set<string>; titulos: Set<string>; produtos: DisparadoInfo[] }> {
   const limite = new Date()
   limite.setHours(limite.getHours() - 48)
   const limiteISO = limite.toISOString()
 
   const { data } = await supabaseAdmin
     .from('produtos')
-    .select('id, titulo')
+    .select('id, titulo, preco')
     .eq('ativo', true)
     .not('ultimo_disparo_em', 'is', null)
     .gte('ultimo_disparo_em', limiteISO)
 
-  if (!data?.length) return { ids: new Set(), titulos: new Set() }
+  if (!data?.length) return { ids: new Set(), titulos: new Set(), produtos: [] }
 
   const ids = new Set(data.map(d => d.id))
   const titulos = new Set(
     data.map(d => (d.titulo || '').toLowerCase().trim()).filter(Boolean)
   )
-  return { ids, titulos }
+  const produtos: DisparadoInfo[] = data.map(d => ({
+    titulo: d.titulo || '',
+    preco: d.preco || 0,
+  }))
+  return { ids, titulos, produtos }
 }
 
 async function marcarProdutosDisparados(ids: string[]) {
@@ -123,82 +138,65 @@ async function buscarProdutos(
   config: DisparoConfig,
   quantidade: number,
   idsJaDisparados: Set<string>,
-  titulosJaDisparados: Set<string>
+  titulosJaDisparados: Set<string>,
+  produtosJaDisparados: DisparadoInfo[]
 ): Promise<{ produtos: any[]; nichosUsados: string[]; ultimoNichoIdx: number }> {
+  const produtos: any[] = []
+  const nichosUsados: string[] = []
+  let idx = nichoIdx
+
+  const todosDisparados = [...produtosJaDisparados]
   const limite48h = new Date()
   limite48h.setHours(limite48h.getHours() - 48)
   const limiteISO = limite48h.toISOString()
 
-  const { data: todosML } = await supabaseAdmin
-    .from('produtos')
-    .select('*')
-    .eq('ativo', true)
-    .in('plataforma', ['mercadolivre', 'lomadee', 'awin'])
-    .gte('desconto_percent', config.desconto_minimo_ml)
-    .or(`ultimo_disparo_em.is.null,ultimo_disparo_em.lt.${limiteISO}`)
-    .order('desconto_percent', { ascending: false })
-    .limit(100)
+  for (let tentativa = 0; tentativa < TODOS_NICHOS.length * 2 && produtos.length < quantidade; tentativa++) {
+    const nicho = TODOS_NICHOS[idx % TODOS_NICHOS.length]
 
-  const { data: todosShopee } = await supabaseAdmin
-    .from('produtos')
-    .select('*')
-    .eq('ativo', true)
-    .eq('plataforma', 'shopee')
-    .gte('score', config.score_minimo_shopee)
-    .or(`ultimo_disparo_em.is.null,ultimo_disparo_em.lt.${limiteISO}`)
-    .order('score', { ascending: false })
-    .limit(50)
+    for (const plataforma of ['mercadolivre', 'shopee', 'amazon', 'aliexpress'] as const) {
+      if (produtos.length >= quantidade) break
 
-  const todosCandidatos = [...(todosML || []), ...(todosShopee || [])]
+      let query = supabaseAdmin
+        .from('produtos')
+        .select('*')
+        .eq('ativo', true)
+        .eq('plataforma', plataforma)
+        .eq('nicho', nicho)
+        .or(`ultimo_disparo_em.is.null,ultimo_disparo_em.lt.${limiteISO}`)
+        .limit(20)
 
-  // Filtra já disparados
-  const disponiveis = todosCandidatos.filter(p =>
-    !idsJaDisparados.has(p.id) &&
-    !titulosJaDisparados.has((p.titulo || '').toLowerCase().trim())
-  )
+      if (plataforma === 'shopee') {
+        query = query.gte('score', config.score_minimo_shopee).order('score', { ascending: false })
+      } else {
+        query = query.gte('desconto_percent', config.desconto_minimo_ml).order('desconto_percent', { ascending: false })
+      }
 
-  // Fase 1: pega 1 por nicho (variedade) — começa pelo nichoIdx
-  const produtos: any[] = []
-  const nichosUsados: string[] = []
-  const usados = new Set<string>()
-  const titulosSelecionados: string[] = []
+      const { data: candidatos } = await query
 
-  const nichoOrder = [...TODOS_NICHOS.slice(nichoIdx), ...TODOS_NICHOS.slice(0, nichoIdx)]
-
-  for (const nicho of nichoOrder) {
-    if (produtos.length >= quantidade) break
-    const doNicho = disponiveis.find(p =>
-      p.nicho === nicho &&
-      !usados.has(p.id) &&
-      !titulosSelecionados.some(t => titulosSimilares(p.titulo, t))
-    )
-    if (doNicho) {
-      produtos.push(doNicho)
-      usados.add(doNicho.id)
-      titulosSelecionados.push(doNicho.titulo)
-      if (!nichosUsados.includes(nicho)) nichosUsados.push(nicho)
+      if (candidatos?.length) {
+        const bloqueadas = config.palavras_bloqueadas?.map(w => w.toLowerCase()) || []
+        const disponiveis = candidatos.filter(p => {
+          const titulo = (p.titulo || '').toLowerCase().trim()
+          return !idsJaDisparados.has(p.id) &&
+            !produtos.some(pp => pp.id === p.id) &&
+            !titulosJaDisparados.has(titulo) &&
+            !bloqueadas.some(w => titulo.includes(w)) &&
+            !produtoSimilarExiste(p.titulo, p.preco, todosDisparados)
+        })
+        if (disponiveis.length > 0) {
+          produtos.push(disponiveis[0])
+          idsJaDisparados.add(disponiveis[0].id)
+          titulosJaDisparados.add((disponiveis[0].titulo || '').toLowerCase().trim())
+          todosDisparados.push({ titulo: disponiveis[0].titulo, preco: disponiveis[0].preco })
+          if (!nichosUsados.includes(nicho)) nichosUsados.push(nicho)
+        }
+      }
     }
+
+    idx++
   }
 
-  // Fase 2: preenche o resto com os melhores descontos disponíveis
-  for (const p of disponiveis) {
-    if (produtos.length >= quantidade) break
-    if (usados.has(p.id)) continue
-    if (titulosSelecionados.some(t => titulosSimilares(p.titulo, t))) continue
-    produtos.push(p)
-    usados.add(p.id)
-    titulosSelecionados.push(p.titulo)
-    if (!nichosUsados.includes(p.nicho)) nichosUsados.push(p.nicho)
-  }
-
-  // Embaralha pra não mandar sempre na mesma ordem
-  for (let i = produtos.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [produtos[i], produtos[j]] = [produtos[j], produtos[i]]
-  }
-
-  const ultimoNichoIdx = (nichoIdx + nichosUsados.length) % TODOS_NICHOS.length
-  return { produtos, nichosUsados, ultimoNichoIdx }
+  return { produtos, nichosUsados, ultimoNichoIdx: idx % TODOS_NICHOS.length }
 }
 
 function randomInt(min: number, max: number): number {
@@ -268,11 +266,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ skip: true, motivo: 'Nenhum grupo ativo cadastrado' })
   }
 
-  const { ids: idsJaDisparados, titulos: titulosJaDisparados } = await getJaDisparados()
+  const { ids: idsJaDisparados, titulos: titulosJaDisparados, produtos: produtosJaDisparados } = await getJaDisparados()
   const nichoIdx = config.ultimo_nicho_idx % TODOS_NICHOS.length
   const qtdProdutos = randomInt(config.min_produtos, config.max_produtos)
 
-  const resultado = await buscarProdutos(nichoIdx, config, qtdProdutos, idsJaDisparados, titulosJaDisparados)
+  const resultado = await buscarProdutos(nichoIdx, config, qtdProdutos, idsJaDisparados, titulosJaDisparados, produtosJaDisparados)
 
   if (resultado.produtos.length === 0) {
     await saveConfig({ ultimo_nicho_idx: (nichoIdx + 1) % TODOS_NICHOS.length })

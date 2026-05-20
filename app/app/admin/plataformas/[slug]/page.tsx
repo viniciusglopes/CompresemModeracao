@@ -66,17 +66,16 @@ const CONFIG: Record<string, {
   amazon: {
     nome: 'Amazon', icon: '📦', cor: 'yellow',
     campos: [
-      { id: 'access_key', label: 'Access Key (PA-API)', key: 'access_key' },
-      { id: 'secret_key', label: 'Secret Key (PA-API)', key: 'secret_key', type: 'password' },
-      { id: 'associate_tag', label: 'Associate Tag', key: 'associate_tag' },
-      { id: 'marketplace', label: 'Marketplace (ex: www.amazon.com.br)', key: 'marketplace' },
+      { id: 'affiliate_tag', label: 'Tag de Afiliado (ex: compresem-20)', key: 'affiliate_tag' },
+      { id: 'access_key', label: 'Access Key (PA-API) — opcional', key: 'access_key' },
+      { id: 'secret_key', label: 'Secret Key (PA-API) — opcional', key: 'secret_key', type: 'password' },
     ],
     endpoints: [
-      { path: 'SearchItems', desc: 'Busca produtos', status: 'auth' },
-      { path: 'GetItems', desc: 'Detalhe produto', status: 'auth' },
-      { path: 'GetVariations', desc: 'Variações', status: 'auth' },
+      { path: 'POST /api/produtos/importar', desc: 'Importar por URL (auto-afiliado)', status: 'affiliate' },
+      { path: 'SearchItems (PA-API)', desc: 'Busca produtos', status: 'auth' },
+      { path: 'GetItems (PA-API)', desc: 'Detalhe produto', status: 'auth' },
     ],
-    dica: '⚠️ PA-API sendo descontinuada em Abr/2026. Migrar para Creators API.'
+    dica: 'Configure a Tag de Afiliado para gerar links automaticamente ao importar produtos da Amazon. Aceita URLs amazon.com.br, amzn.to e a.co.'
   },
   lomadee: {
     nome: 'Lomadee', icon: '🏬', cor: 'green',
