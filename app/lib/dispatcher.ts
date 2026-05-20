@@ -164,7 +164,9 @@ async function formatarMensagemTelegram(produto: Produto, abertura: string): Pro
 
 async function formatarMensagemWhatsApp(produto: Produto, abertura: string): Promise<string> {
   const titulo = produto.titulo.length > 100 ? produto.titulo.slice(0, 100) + '...' : produto.titulo
-  const link = await encurtarLink(produto.link_afiliado || produto.link_original)
+  const rawLink = produto.link_afiliado || produto.link_original
+  const skipShorten = /amazon\.com|amzn\.to|aliexpress\.com|a\.co\//i.test(rawLink)
+  const link = skipShorten ? rawLink : await encurtarLink(rawLink)
 
   let msg = abertura ? `${abertura}\n\n` : ''
   msg += `🔥 *${titulo}*\n\n`
