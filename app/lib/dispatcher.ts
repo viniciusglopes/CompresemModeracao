@@ -1,5 +1,6 @@
 // Dispatcher: envia mensagens de oferta para Telegram e WhatsApp
 import { supabaseAdmin } from '@/lib/supabase'
+import { getOrCreateShortLink } from '@/lib/short-link'
 
 interface Produto {
   id: string
@@ -109,15 +110,12 @@ Responda APENAS com a linha de abertura, nada mais.`
   return ''
 }
 
-async function encurtarLink(url: string): Promise<string> {
+const SITE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://compresemmoderacao.com.br'
+
+async function encurtarLink(url: string, produtoId?: string): Promise<string> {
   try {
-    const res = await fetch(`https://is.gd/create.php?format=simple&url=${encodeURIComponent(url)}`, {
-      signal: AbortSignal.timeout(5000),
-    })
-    if (res.ok) {
-      const short = (await res.text()).trim()
-      if (short.startsWith('https://is.gd/')) return short
-    }
+    const slug = await getOrCreateShortLink(url, produtoId)
+    return `${SITE_URL}/link/${slug}`
   } catch {}
   return url
 }
@@ -127,7 +125,8 @@ async function encurtarLink(url: string): Promise<string> {
 async function formatarMensagemTelegram(produto: Produto, abertura: string): Promise<string> {
   const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   const titulo = produto.titulo.length > 100 ? produto.titulo.slice(0, 100) + '...' : produto.titulo
-  const link = produto.link_afiliado || produto.link_original
+  const rawLink = produto.link_afiliado || produto.link_original
+  const link = await encurtarLink(rawLink, produto.id)
 
   // Converte *texto* → <b>texto</b> para Telegram HTML mode
   const aberturaHtml = abertura
@@ -165,8 +164,7 @@ async function formatarMensagemTelegram(produto: Produto, abertura: string): Pro
 async function formatarMensagemWhatsApp(produto: Produto, abertura: string): Promise<string> {
   const titulo = produto.titulo.length > 100 ? produto.titulo.slice(0, 100) + '...' : produto.titulo
   const rawLink = produto.link_afiliado || produto.link_original
-  const skipShorten = /amazon\.com|amzn\.to|aliexpress\.com|a\.co\//i.test(rawLink)
-  const link = skipShorten ? rawLink : await encurtarLink(rawLink)
+  const link = await encurtarLink(rawLink, produto.id)
 
   let msg = abertura ? `${abertura}\n\n` : ''
   msg += `🔥 *${titulo}*\n\n`
