@@ -23,7 +23,6 @@ export const TODOS_NICHOS: Record<string, { label: string; category: string; emo
   bebes:            { label: 'Bebês',                   category: 'MLB1168', emoji: '🍼' },
   brinquedos:       { label: 'Brinquedos e Hobbies',    category: 'MLB1384', emoji: '🧸' },
   veiculos_acess:   { label: 'Acessórios para Veículos',category: 'MLB1276', emoji: '🚗' },
-  livros:           { label: 'Livros e Revistas',        category: 'MLB1367', emoji: '📚' },
   saude:            { label: 'Saúde',                   category: 'MLB1246', emoji: '💊' },
   alimentos:        { label: 'Alimentos e Bebidas',     category: 'MLB3937', emoji: '🍎' },
   musica:           { label: 'Instrumentos Musicais',   category: 'MLB1212', emoji: '🎸' },
@@ -238,7 +237,7 @@ export async function POST(request: Request) {
         })
         const data = await res.json()
         resultados.push({ nicho, ...data })
-        await sleep(2000) // pausa entre nichos
+        await sleep(60000) // pausa entre nichos
       }
       const totalSalvos = resultados.reduce((s, r) => s + (r.salvos || 0), 0)
       return NextResponse.json({ salvos: totalSalvos, nichos: resultados })
@@ -280,14 +279,14 @@ export async function POST(request: Request) {
 
       // Se search bloqueado de VPS (403/empty), tenta highlights
       if (todosItens.length === 0) {
-        await sleep(500)
+        await sleep(60000)
         todosItens = await highlightsComDesconto(nichoConfig.category, token)
         estrategiaUsada = 'highlights_items'
       }
 
       // Se highlights sem desconto, tenta busca por termos de oferta
       if (todosItens.length === 0) {
-        await sleep(500)
+        await sleep(60000)
         todosItens = await buscaTermoOferta(nichoConfig.category, token, Math.min(limite, 20))
         estrategiaUsada = 'busca_termo'
       }

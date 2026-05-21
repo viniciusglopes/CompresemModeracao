@@ -8,7 +8,7 @@ const NICHOS_ML = [
   'eletronicos', 'eletrodomesticos', 'informatica', 'games',
   'audio_video', 'cameras', 'moda', 'calcados', 'beleza',
   'casa_moveis', 'ferramentas', 'esportes', 'bebes', 'brinquedos',
-  'veiculos_acess', 'livros', 'saude', 'alimentos', 'musica', 'pet_shop',
+  'veiculos_acess', 'saude', 'alimentos', 'musica', 'pet_shop',
 ]
 
 const NICHOS_SHOPEE = [
