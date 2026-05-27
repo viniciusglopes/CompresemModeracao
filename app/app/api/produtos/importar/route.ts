@@ -560,6 +560,20 @@ export async function POST(request: Request) {
     let shopeeInfo: { detectado: boolean; link_afiliado?: string } = { detectado: false }
     let linkAfiliado = link_afiliado || ''
 
+    // ── Mercado Livre: gera link de afiliado ──
+    if (plataforma === 'mercadolivre' && !link_afiliado) {
+      const { data: mlCfg } = await supabaseAdmin
+        .from('config_plataformas')
+        .select('credenciais')
+        .eq('plataforma', 'mercadolivre')
+        .maybeSingle()
+      const mlTag = mlCfg?.credenciais?.affiliate_tag
+      if (mlTag) {
+        const sep = url.includes('?') ? '&' : '?'
+        linkAfiliado = `${url}${sep}mt_source=aff&mt_medium=afiliados&mt_campaign=${mlTag}`
+      }
+    }
+
     // ── AWIN: gera link de afiliado ──
     if (plataforma === 'awin' && awinMerchantId) {
       const { data: cfg } = await supabaseAdmin
