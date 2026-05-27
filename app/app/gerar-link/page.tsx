@@ -83,7 +83,7 @@ export default function GerarLinkPage() {
             value={url}
             onChange={e => setUrl(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); gerar() } }}
-            placeholder="Ex: https://www.mercadolivre.com.br/produto... ou https://shopee.com.br/..."
+            placeholder="Ex: https://www.mercadolivre.com.br/produto... ou https://nike.com.br/..."
             rows={3}
             className="w-full px-4 py-3 rounded-xl text-sm border border-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-rose-400 bg-gray-50 resize-none transition"
           />
@@ -182,11 +182,21 @@ export default function GerarLinkPage() {
 
         <div className="bg-white/60 rounded-2xl border border-gray-100 p-5">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Plataformas suportadas</p>
-          <div className="flex flex-wrap gap-3 text-sm text-gray-600">
+          <div className="grid grid-cols-2 gap-2 text-sm text-gray-600">
             <div className="flex items-center gap-2">🛒 Mercado Livre</div>
             <div className="flex items-center gap-2">🧡 Shopee</div>
             <div className="flex items-center gap-2">📦 Amazon</div>
+            <div className="flex items-center gap-2">👟 Nike</div>
+            <div className="flex items-center gap-2">👗 C&A</div>
+            <div className="flex items-center gap-2">💎 Vivara</div>
+            <div className="flex items-center gap-2">🏃 Adidas</div>
+            <div className="flex items-center gap-2">🏪 Renner</div>
+            <div className="flex items-center gap-2">💄 Natura</div>
+            <div className="flex items-center gap-2">🌸 O Boticario</div>
+            <div className="flex items-center gap-2">👔 Calvin Klein</div>
+            <div className="flex items-center gap-2">🐊 Lacoste</div>
           </div>
+          <p className="text-xs text-gray-400 mt-3">E mais lojas parceiras AWIN e Lomadee</p>
         </div>
       </div>
     </div>
