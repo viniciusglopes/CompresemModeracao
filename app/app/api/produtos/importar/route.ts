@@ -635,6 +635,30 @@ export async function POST(request: Request) {
       dados = await fetchMlProduto(produtoId, token)
     }
 
+    // ── ML fallback: quando API retorna 403 (PolicyAgent), extrai do slug ──
+    if (!dados && plataforma === 'mercadolivre' && produtoId) {
+      try {
+        const slugMatch = url.match(/MLB-?\d+-([^?]+?)(?:-_JM|$)/i)
+        if (slugMatch) {
+          const titulo = slugMatch[1]
+            .replace(/-/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase())
+            .trim()
+          if (titulo.length > 5) {
+            dados = {
+              titulo,
+              preco: 0,
+              preco_original: 0,
+              thumbnail: '',
+              permalink: url,
+              domain_id: '',
+              produto_id_externo: produtoId,
+            }
+          }
+        }
+      } catch {}
+    }
+
     // ── Amazon: busca via microlink.io (nosso IP esta bloqueado pela Amazon) ──
     if (!dados && plataforma === 'amazon' && produtoId) {
       try {
