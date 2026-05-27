@@ -233,6 +233,28 @@ async function fetchMlProduto(produtoId: string, token: string) {
   return null
 }
 
+// ─── Amazon: busca dados via microlink.io (evita bloqueio de IP) ─────────────
+
+async function fetchAmazonViaMicrolink(asin: string): Promise<{ titulo: string; thumbnail: string; preco: number; precoOriginal: number } | null> {
+  try {
+    const url = `https://www.amazon.com.br/dp/${asin}`
+    const res = await fetch(`https://api.microlink.io/?url=${encodeURIComponent(url)}`, {
+      signal: AbortSignal.timeout(15000),
+    })
+    if (!res.ok) return null
+    const json = await res.json()
+    if (json.status !== 'success') return null
+    const data = json.data
+    const titulo = (data.title || '').replace(/\s*:\s*Amazon\.com\.br.*$/i, '').trim()
+    if (!titulo || titulo.length < 3) return null
+    const imageUrl = data.image?.url || ''
+    const thumbnail = imageUrl.startsWith('data:') ? `https://images-na.ssl-images-amazon.com/images/P/${asin}.01._SCLZZZZZZZ_.jpg` : imageUrl
+    return { titulo, thumbnail, preco: 0, precoOriginal: 0 }
+  } catch {
+    return null
+  }
+}
+
 // ─── Scraping genérico via Open Graph / JSON-LD ───────────────────────────────
 
 const USER_AGENTS = [
@@ -613,7 +635,25 @@ export async function POST(request: Request) {
       dados = await fetchMlProduto(produtoId, token)
     }
 
-    // ── Outros ou fallback: scraping ──
+    // ── Amazon: busca via microlink.io (nosso IP esta bloqueado pela Amazon) ──
+    if (!dados && plataforma === 'amazon' && produtoId) {
+      try {
+        const amzData = await fetchAmazonViaMicrolink(produtoId)
+        if (amzData?.titulo) {
+          dados = {
+            titulo: amzData.titulo,
+            preco: amzData.preco,
+            preco_original: amzData.precoOriginal,
+            thumbnail: amzData.thumbnail,
+            permalink: `https://www.amazon.com.br/dp/${produtoId}`,
+            domain_id: '',
+            produto_id_externo: produtoId,
+          }
+        }
+      } catch {}
+    }
+
+    // ── Outros ou fallback: scraping direto ──
     if (!dados) {
       try {
         const scraped = await scrapeUrl(url, plataforma)
