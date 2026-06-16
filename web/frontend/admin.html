@@ -414,22 +414,65 @@
 
             <!-- Other Sections (Placeholder) -->
             <div id="ofertas-section" class="section">
-                <h2 class="text-2xl font-bold text-gray-800 mb-6">🛒 Gerenciar Ofertas</h2>
-                <div class="bg-white p-6 rounded-lg shadow-sm">
-                    <p class="text-gray-600">Seção de gerenciamento de ofertas em desenvolvimento...</p>
-                    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div class="p-4 bg-gray-50 rounded-lg">
-                            <h4 class="font-medium text-gray-800">📊 Total de Ofertas</h4>
-                            <p class="text-2xl font-bold text-primary">47</p>
-                        </div>
-                        <div class="p-4 bg-gray-50 rounded-lg">
-                            <h4 class="font-medium text-gray-800">⚡ Ofertas Ativas</h4>
-                            <p class="text-2xl font-bold text-green-600">42</p>
-                        </div>
-                        <div class="p-4 bg-gray-50 rounded-lg">
-                            <h4 class="font-medium text-gray-800">⏸️ Pausadas</h4>
-                            <p class="text-2xl font-bold text-gray-600">5</p>
-                        </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-6">🛒 Produtos Garimpados</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="p-4 bg-white rounded-lg shadow-sm">
+                        <h4 class="font-medium text-gray-600 text-sm">Total de Produtos</h4>
+                        <p id="totalProdutos" class="text-2xl font-bold text-primary">-</p>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow-sm">
+                        <h4 class="font-medium text-gray-600 text-sm">Ativos</h4>
+                        <p id="totalAtivos" class="text-2xl font-bold text-green-600">-</p>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow-sm">
+                        <h4 class="font-medium text-gray-600 text-sm">Ja Disparados</h4>
+                        <p id="totalDisparados" class="text-2xl font-bold text-blue-600">-</p>
+                    </div>
+                    <div class="p-4 bg-white rounded-lg shadow-sm">
+                        <h4 class="font-medium text-gray-600 text-sm">Aguardando Disparo</h4>
+                        <p id="totalPendentes" class="text-2xl font-bold text-orange-600">-</p>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-4">
+                    <div class="flex flex-wrap gap-3 items-center">
+                        <select id="filtroPlatforma" onchange="carregarProdutos()" class="border rounded-lg px-3 py-2 text-sm">
+                            <option value="">Todas plataformas</option>
+                            <option value="mercadolivre">Mercado Livre</option>
+                            <option value="shopee">Shopee</option>
+                            <option value="amazon">Amazon</option>
+                            <option value="aliexpress">AliExpress</option>
+                        </select>
+                        <select id="filtroStatus" onchange="carregarProdutos()" class="border rounded-lg px-3 py-2 text-sm">
+                            <option value="">Todos</option>
+                            <option value="pendente">Aguardando disparo</option>
+                            <option value="disparado">Ja disparados</option>
+                        </select>
+                        <button onclick="carregarProdutos()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm hover:opacity-90">
+                            Atualizar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 border-b">
+                                <tr>
+                                    <th class="text-left p-3">Foto</th>
+                                    <th class="text-left p-3">Produto</th>
+                                    <th class="text-left p-3">Plataforma</th>
+                                    <th class="text-right p-3">Preco</th>
+                                    <th class="text-right p-3">Desconto</th>
+                                    <th class="text-center p-3">Status</th>
+                                    <th class="text-center p-3">Acoes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="produtosBody">
+                                <tr><td colspan="7" class="p-6 text-center text-gray-500">Carregando produtos...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -2586,6 +2629,84 @@
             });
         }
 
+        // ============================================================
+        // PRODUTOS GARIMPADOS
+        // ============================================================
+        async function carregarProdutos() {
+            const plataforma = document.getElementById('filtroPlatforma')?.value || '';
+            const status = document.getElementById('filtroStatus')?.value || '';
+            const body = document.getElementById('produtosBody');
+            if (!body) return;
+
+            try {
+                let url = '/api/produtos?limit=100';
+                if (plataforma) url += '&plataforma=' + plataforma;
+                const response = await fetch(url);
+                const data = await response.json();
+                if (!data.success || !data.produtos) {
+                    body.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-red-500">Erro ao carregar produtos</td></tr>';
+                    return;
+                }
+
+                let produtos = data.produtos;
+
+                if (status === 'pendente') produtos = produtos.filter(p => !p.ultimo_disparo_em);
+                if (status === 'disparado') produtos = produtos.filter(p => p.ultimo_disparo_em);
+
+                const total = produtos.length;
+                const ativos = produtos.filter(p => p.ativo).length;
+                const disparados = produtos.filter(p => p.ultimo_disparo_em).length;
+                const pendentes = produtos.filter(p => !p.ultimo_disparo_em && p.ativo).length;
+
+                const el = id => document.getElementById(id);
+                if (el('totalProdutos')) el('totalProdutos').textContent = total;
+                if (el('totalAtivos')) el('totalAtivos').textContent = ativos;
+                if (el('totalDisparados')) el('totalDisparados').textContent = disparados;
+                if (el('totalPendentes')) el('totalPendentes').textContent = pendentes;
+
+                if (produtos.length === 0) {
+                    body.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-gray-500">Nenhum produto encontrado</td></tr>';
+                    return;
+                }
+
+                const platColors = { mercadolivre: 'bg-yellow-100 text-yellow-800', shopee: 'bg-orange-100 text-orange-800', amazon: 'bg-blue-100 text-blue-800', aliexpress: 'bg-red-100 text-red-800' };
+
+                body.innerHTML = produtos.map(p => {
+                    const thumb = p.thumbnail ? `<img src="${p.thumbnail}" class="w-12 h-12 object-cover rounded" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2248%22 height=%2248%22><rect fill=%22%23f3f4f6%22 width=%2248%22 height=%2248%22/><text x=%2224%22 y=%2228%22 text-anchor=%22middle%22 fill=%22%239ca3af%22 font-size=%2220%22>?</text></svg>'">` : '<div class="w-12 h-12 bg-gray-100 rounded flex items-center justify-center text-gray-400">?</div>';
+                    const platClass = platColors[p.plataforma] || 'bg-gray-100 text-gray-800';
+                    const statusBadge = p.ultimo_disparo_em ? '<span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">Disparado</span>' : '<span class="px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800">Pendente</span>';
+                    const preco = p.preco ? 'R$ ' + p.preco.toFixed(2) : '-';
+                    const desconto = p.desconto_percent ? '-' + p.desconto_percent + '%' : '-';
+                    const titulo = (p.titulo || '').substring(0, 60) + ((p.titulo || '').length > 60 ? '...' : '');
+
+                    return `<tr class="border-b hover:bg-gray-50">
+                        <td class="p-3">${thumb}</td>
+                        <td class="p-3"><div class="font-medium text-gray-800 text-xs">${titulo}</div></td>
+                        <td class="p-3"><span class="px-2 py-1 text-xs rounded-full ${platClass}">${p.plataforma}</span></td>
+                        <td class="p-3 text-right font-medium">${preco}</td>
+                        <td class="p-3 text-right"><span class="text-green-600 font-medium">${desconto}</span></td>
+                        <td class="p-3 text-center">${statusBadge}</td>
+                        <td class="p-3 text-center">
+                            <a href="${p.link_afiliado || p.link_original || '#'}" target="_blank" class="text-blue-600 hover:underline text-xs">Ver</a>
+                            <button onclick="deletarProduto('${p.id}')" class="ml-2 text-red-500 hover:text-red-700 text-xs">Excluir</button>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch (e) {
+                body.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-red-500">Erro de conexao</td></tr>';
+            }
+        }
+
+        async function deletarProduto(id) {
+            if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+            try {
+                await fetch('/api/produtos/' + id, { method: 'DELETE' });
+                carregarProdutos();
+            } catch (e) {
+                alert('Erro ao excluir');
+            }
+        }
+
         // Initialize everything when page loads
         window.addEventListener('load', function() {
             loadUserInfo();
@@ -2593,6 +2714,7 @@
             loadConfigurations();
             loadComparisonStats();
             carregarStatusPlataformas();
+            carregarProdutos();
             addActivityLog('Painel admin carregado', 'success');
         });
 
