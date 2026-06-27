@@ -68,14 +68,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'produto_ids é obrigatório' }, { status: 400 })
     }
 
-    // Busca produtos
-    const { data: produtos, error: prodErr } = await supabaseAdmin
+    // Busca produtos de ambas as tabelas (produtos + garimpados)
+    const { data: produtosApi, error: prodErr } = await supabaseAdmin
       .from('produtos')
       .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, nicho, frete_gratis, loja_nome')
       .in('id', produto_ids)
 
     if (prodErr) return NextResponse.json({ error: prodErr.message }, { status: 500 })
-    if (!produtos?.length) return NextResponse.json({ error: 'Nenhum produto encontrado' }, { status: 404 })
+
+    const idsEncontrados = new Set((produtosApi || []).map((p: any) => p.id))
+    const idsFaltantes = produto_ids.filter((id: string) => !idsEncontrados.has(id))
+
+    let produtosGarimp: any[] = []
+    if (idsFaltantes.length > 0) {
+      const { data: garimps } = await supabaseAdmin
+        .from('produtos_garimpados')
+        .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, cupom')
+        .in('id', idsFaltantes)
+
+      produtosGarimp = (garimps || []).map((g: any) => ({
+        ...g,
+        nicho: null,
+        frete_gratis: false,
+        loja_nome: null,
+      }))
+    }
+
+    const produtos = [...(produtosApi || []), ...produtosGarimp]
+    if (!produtos.length) return NextResponse.json({ error: 'Nenhum produto encontrado' }, { status: 404 })
 
     // Busca grupos ativos
     let gruposQuery = supabaseAdmin.from('grupos').select('*').eq('ativo', true)

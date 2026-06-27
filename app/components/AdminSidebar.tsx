@@ -7,9 +7,10 @@ import { cn } from '@/lib/utils'
 
 const navItems = [
   { label: 'Dashboard', href: '/admin', icon: '📊' },
+  { label: 'Central de Ofertas', href: '/admin/central', icon: '🎯' },
   { label: 'Garimpados', href: '/admin/garimpados', icon: '🕵️' },
   { label: 'Produtos', href: '/admin/produtos', icon: '🏷️' },
-  { label: 'Ofertas', href: '/admin/ofertas', icon: '🎯' },
+  { label: 'Ofertas', href: '/admin/ofertas', icon: '📤' },
   { label: 'Disparos', href: '/admin/disparos', icon: '📤' },
   { label: 'Links Curtos', href: '/admin/links', icon: '🔗' },
   { label: 'Importar Produto', href: '/admin/importar', icon: '📥' },
