@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 
+// --------------- helpers ---------------
+
 async function resolverUrl(url: string): Promise<string> {
   try {
     const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(5000) })
@@ -26,6 +28,84 @@ async function fetchThumbnailRapido(url: string, plataforma: string): Promise<st
     return null
   }
 }
+
+// --------------- inline affiliate link builders ---------------
+
+interface AffiliateConfigs {
+  ml_tag: string | null
+  amazon_tag: string | null
+}
+
+let _affiliateConfigsCache: { configs: AffiliateConfigs; ts: number } | null = null
+
+async function getAffiliateConfigs(): Promise<AffiliateConfigs> {
+  // Cache for 5 minutes to avoid hitting DB on every request
+  if (_affiliateConfigsCache && Date.now() - _affiliateConfigsCache.ts < 5 * 60 * 1000) {
+    return _affiliateConfigsCache.configs
+  }
+  const { data: rows } = await supabaseAdmin
+    .from('config_plataformas')
+    .select('plataforma, credenciais')
+    .in('plataforma', ['mercadolivre', 'amazon'])
+
+  const configs: AffiliateConfigs = { ml_tag: null, amazon_tag: null }
+  for (const r of rows || []) {
+    if (r.plataforma === 'mercadolivre') configs.ml_tag = r.credenciais?.affiliate_tag || null
+    if (r.plataforma === 'amazon') configs.amazon_tag = r.credenciais?.affiliate_tag || null
+  }
+  _affiliateConfigsCache = { configs, ts: Date.now() }
+  return configs
+}
+
+function buildMlAffiliateLinkInline(resolvedUrl: string, affiliateTag: string): string {
+  try {
+    const parsed = new URL(resolvedUrl)
+    parsed.searchParams.delete('matt_tool')
+    parsed.searchParams.delete('matt_word')
+    parsed.searchParams.delete('matt_source')
+    parsed.searchParams.delete('matt_campaign')
+    parsed.searchParams.set('matt_tool', affiliateTag)
+    return parsed.toString()
+  } catch {
+    const sep = resolvedUrl.includes('?') ? '&' : '?'
+    return `${resolvedUrl}${sep}matt_tool=${affiliateTag}`
+  }
+}
+
+function buildAmazonAffiliateLinkInline(resolvedUrl: string, amazonTag: string): string {
+  try {
+    const parsed = new URL(resolvedUrl)
+    parsed.searchParams.set('tag', amazonTag)
+    return parsed.toString()
+  } catch {
+    if (resolvedUrl.includes('tag=')) {
+      return resolvedUrl.replace(/tag=[^&]+/, `tag=${amazonTag}`)
+    }
+    const sep = resolvedUrl.includes('?') ? '&' : '?'
+    return `${resolvedUrl}${sep}tag=${amazonTag}`
+  }
+}
+
+async function fixAffiliateLinkInline(
+  linkOriginal: string,
+  plataforma: string,
+  configs: AffiliateConfigs,
+): Promise<string | null> {
+  try {
+    if (plataforma === 'mercadolivre' && configs.ml_tag) {
+      const resolved = await resolverUrl(linkOriginal)
+      return buildMlAffiliateLinkInline(resolved, configs.ml_tag)
+    }
+    if (plataforma === 'amazon' && configs.amazon_tag) {
+      // Amazon links don't need resolving to swap tag
+      const resolved = linkOriginal.includes('amzn.to') ? await resolverUrl(linkOriginal) : linkOriginal
+      return buildAmazonAffiliateLinkInline(resolved, configs.amazon_tag)
+    }
+  } catch {}
+  return null
+}
+
+// --------------- main handler ---------------
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -95,6 +175,31 @@ export async function GET(request: Request) {
         supabaseAdmin
           .from('produtos_garimpados')
           .update({ thumbnail: thumb })
+          .eq('id', p.id)
+          .then(() => {})
+      }
+    })
+    await Promise.allSettled(promises)
+  }
+
+  // Enriquecer inline: fix affiliate links de garimpados sem link_afiliado ou com link de terceiros (max 5 por request)
+  const semAfiliado = merged.filter(p =>
+    p.origem === 'garimpado' &&
+    p.link_original &&
+    (!p.link_afiliado || p.link_afiliado === p.link_original) &&
+    (p.plataforma === 'mercadolivre' || p.plataforma === 'amazon')
+  )
+  if (semAfiliado.length > 0) {
+    const configs = await getAffiliateConfigs()
+    const batch = semAfiliado.slice(0, 5)
+    const promises = batch.map(async (p) => {
+      const newLink = await fixAffiliateLinkInline(p.link_original, p.plataforma, configs)
+      if (newLink) {
+        p.link_afiliado = newLink
+        // Fire-and-forget: persist to DB so next request doesn't need to fix again
+        supabaseAdmin
+          .from('produtos_garimpados')
+          .update({ link_afiliado: newLink })
           .eq('id', p.id)
           .then(() => {})
       }
