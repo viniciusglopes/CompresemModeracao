@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   let queryG = supabaseAdmin
     .from('produtos_garimpados')
-    .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, cupom, fonte_grupo, criado_em')
+    .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, cupom, fonte_grupo, criado_em')
     .order('criado_em', { ascending: false })
     .range(offset, offset + limit - 1)
 
@@ -32,21 +32,6 @@ export async function GET(request: Request) {
   if (after) queryG = queryG.gt('criado_em', after)
 
   const { data: garimpados } = await queryG
-
-  // Fetch thumbnails from produtos table for garimpados that were promoted
-  const garimpLinks = (garimpados || []).map(g => g.link_original).filter(Boolean)
-  let thumbMap: Record<string, string> = {}
-  if (garimpLinks.length > 0) {
-    const { data: promoted } = await supabaseAdmin
-      .from('produtos')
-      .select('link_original, thumbnail')
-      .in('link_original', garimpLinks)
-    if (promoted) {
-      for (const p of promoted) {
-        if (p.thumbnail) thumbMap[p.link_original] = p.thumbnail
-      }
-    }
-  }
 
   const garimpNorm = (garimpados || []).map(g => ({
     id: g.id,
@@ -57,7 +42,7 @@ export async function GET(request: Request) {
     plataforma: g.plataforma,
     link_afiliado: g.link_afiliado,
     link_original: g.link_original,
-    thumbnail: thumbMap[g.link_original] || null,
+    thumbnail: g.thumbnail || null,
     nicho: null,
     frete_gratis: false,
     loja_nome: g.fonte_grupo,
