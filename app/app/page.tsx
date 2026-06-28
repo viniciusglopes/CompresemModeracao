@@ -30,11 +30,23 @@ const NICHOS_GRID = [
 ]
 
 function timeAgo(iso: string) {
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000
-  if (diff < 60) return 'agora'
-  if (diff < 3600) return `${Math.floor(diff / 60)}min`
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h`
-  return `${Math.floor(diff / 86400)}d`
+  const diff = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
+  if (diff < 60) return `${Math.floor(diff)}s`
+  if (diff < 3600) {
+    const min = Math.floor(diff / 60)
+    const seg = Math.floor(diff % 60)
+    return seg > 0 ? `${min}min ${seg}s` : `${min}min`
+  }
+  if (diff < 86400) {
+    const hrs = Math.floor(diff / 3600)
+    const min = Math.floor((diff % 3600) / 60)
+    return min > 0 ? `${hrs}h ${min}min` : `${hrs}h`
+  }
+  const dias = Math.floor(diff / 86400)
+  const hrs = Math.floor((diff % 86400) / 3600)
+  const min = Math.floor((diff % 3600) / 60)
+  if (hrs > 0 || min > 0) return `${dias}d ${hrs}h${min > 0 ? ` ${min}min` : ''}`
+  return `${dias}d`
 }
 
 function fmt(v: number) {
