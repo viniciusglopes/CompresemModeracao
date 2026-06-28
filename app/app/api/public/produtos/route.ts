@@ -33,6 +33,21 @@ export async function GET(request: Request) {
 
   const { data: garimpados } = await queryG
 
+  // Fetch thumbnails from produtos table for garimpados that were promoted
+  const garimpLinks = (garimpados || []).map(g => g.link_original).filter(Boolean)
+  let thumbMap: Record<string, string> = {}
+  if (garimpLinks.length > 0) {
+    const { data: promoted } = await supabaseAdmin
+      .from('produtos')
+      .select('link_original, thumbnail')
+      .in('link_original', garimpLinks)
+    if (promoted) {
+      for (const p of promoted) {
+        if (p.thumbnail) thumbMap[p.link_original] = p.thumbnail
+      }
+    }
+  }
+
   const garimpNorm = (garimpados || []).map(g => ({
     id: g.id,
     titulo: g.titulo,
@@ -42,7 +57,7 @@ export async function GET(request: Request) {
     plataforma: g.plataforma,
     link_afiliado: g.link_afiliado,
     link_original: g.link_original,
-    thumbnail: null,
+    thumbnail: thumbMap[g.link_original] || null,
     nicho: null,
     frete_gratis: false,
     loja_nome: g.fonte_grupo,
