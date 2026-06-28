@@ -54,6 +54,7 @@ export async function GET(request: Request) {
   const prodNorm = (produtos || []).map(p => ({ ...p, origem: 'api' }))
 
   const merged = [...prodNorm, ...garimpNorm]
+    .filter(p => p.preco != null && p.preco > 0)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, limit)
 
