@@ -109,6 +109,8 @@ export default function HomePage() {
   const [copiado, setCopiado] = useState(false)
   const latestCreatedAt = useRef<string | null>(null)
   const refreshRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const loadingMoreRef = useRef(false)
 
   const fetchProdutos = async (nicho: string, plat: string, off: number, after?: string) => {
     const params = new URLSearchParams({ limit: String(LIMIT), offset: String(off) })
@@ -153,14 +155,27 @@ export default function HomePage() {
     return () => { if (refreshRef.current) clearInterval(refreshRef.current) }
   }, [nichoAtivo, plataforma])
 
-  const loadMore = async () => {
+  const loadMore = useCallback(async () => {
+    if (loadingMoreRef.current || !hasMore) return
+    loadingMoreRef.current = true
     setLoadingMore(true)
     const novos = await fetchProdutos(nichoAtivo, plataforma, offset)
     setProdutos(prev => [...prev, ...novos])
     setOffset(prev => prev + novos.length)
     setHasMore(novos.length === LIMIT)
     setLoadingMore(false)
-  }
+    loadingMoreRef.current = false
+  }, [nichoAtivo, plataforma, offset, hasMore])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) loadMore()
+    }, { rootMargin: '400px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [loadMore])
 
   // Atualiza título e favicon com badge de novas ofertas
   useEffect(() => {
@@ -319,6 +334,12 @@ export default function HomePage() {
                     )}
                   </div>
                   <div className="flex flex-col flex-1 p-3.5">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-semibold text-pink-500">
+                        {p.plataforma === 'shopee' ? '🧡 Shopee' : p.plataforma === 'awin' ? '🏪 ' + (p.loja_nome || 'Parceiro') : p.plataforma === 'lomadee' ? '🏬 Parceiro' : '🛒 ML'}
+                      </span>
+                      <span className="text-[10px] text-gray-400">{timeAgo(p.created_at)}</span>
+                    </div>
                     <p className="text-xs text-gray-600 line-clamp-2 leading-snug mb-3">{p.titulo}</p>
                     <div className="mt-auto">
                       <p className="text-xs text-gray-400 line-through">{fmt(p.preco_original)}</p>
@@ -337,12 +358,16 @@ export default function HomePage() {
               ))}
             </div>
 
-            {hasMore && !busca && (
-              <div className="text-center mt-8">
-                <button onClick={loadMore} disabled={loadingMore}
-                  className="px-8 py-3 bg-white border-2 border-pink-400 text-pink-500 font-semibold rounded-xl hover:bg-pink-50 transition-colors text-sm disabled:opacity-50">
-                  {loadingMore ? '⏳ Carregando...' : 'Carregar mais ofertas'}
-                </button>
+            {!busca && (
+              <div ref={sentinelRef} className="text-center mt-8 py-4">
+                {loadingMore && (
+                  <div className="flex items-center justify-center gap-2 text-pink-400 text-sm">
+                    <span className="animate-spin">⏳</span> Carregando mais ofertas...
+                  </div>
+                )}
+                {!hasMore && produtos.length > 0 && (
+                  <p className="text-gray-400 text-sm">Todas as ofertas carregadas ✨</p>
+                )}
               </div>
             )}
           </>
