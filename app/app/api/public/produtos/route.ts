@@ -7,8 +7,7 @@ export async function GET(request: Request) {
   const plataforma = searchParams.get('plataforma')
   const limit = Math.min(parseInt(searchParams.get('limit') || '60'), 120)
   const offset = parseInt(searchParams.get('offset') || '0')
-
-  const after = searchParams.get('after') // ISO — retorna só produtos criados depois deste timestamp
+  const after = searchParams.get('after')
 
   let query = supabaseAdmin
     .from('produtos')
@@ -21,7 +20,43 @@ export async function GET(request: Request) {
   if (plataforma) query = query.eq('plataforma', plataforma)
   if (after) query = query.gt('created_at', after)
 
-  const { data, error } = await query
+  const { data: produtos, error } = await query
+
+  let queryG = supabaseAdmin
+    .from('produtos_garimpados')
+    .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, cupom, fonte_grupo, criado_em')
+    .order('criado_em', { ascending: false })
+    .range(offset, offset + limit - 1)
+
+  if (plataforma) queryG = queryG.eq('plataforma', plataforma)
+  if (after) queryG = queryG.gt('criado_em', after)
+
+  const { data: garimpados } = await queryG
+
+  const garimpNorm = (garimpados || []).map(g => ({
+    id: g.id,
+    titulo: g.titulo,
+    preco: g.preco,
+    preco_original: g.preco_original,
+    desconto_percent: g.desconto_percent,
+    plataforma: g.plataforma,
+    link_afiliado: g.link_afiliado,
+    link_original: g.link_original,
+    thumbnail: null,
+    nicho: null,
+    frete_gratis: false,
+    loja_nome: g.fonte_grupo,
+    created_at: g.criado_em,
+    origem: 'garimpado',
+    cupom: g.cupom,
+  }))
+
+  const prodNorm = (produtos || []).map(p => ({ ...p, origem: 'api' }))
+
+  const merged = [...prodNorm, ...garimpNorm]
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, limit)
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ produtos: data || [], total: data?.length || 0 })
+  return NextResponse.json({ produtos: merged, total: merged.length })
 }
