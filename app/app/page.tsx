@@ -332,7 +332,10 @@ export default function HomePage() {
                       <img src={p.thumbnail} alt={p.titulo}
                         className="w-full h-full object-contain p-3 group-hover:scale-110 transition-transform duration-500" />
                     ) : (
-                      <span className="text-4xl opacity-20">👜</span>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="text-5xl">{p.plataforma === 'shopee' ? '🧡' : p.plataforma === 'mercadolivre' ? '🛒' : '👜'}</span>
+                        <span className="text-xs text-gray-400 font-medium">{p.plataforma === 'shopee' ? 'Shopee' : p.plataforma === 'mercadolivre' ? 'Mercado Livre' : 'Oferta'}</span>
+                      </div>
                     )}
                     {p.desconto_percent != null && p.desconto_percent > 0 && (
                     <div className="absolute top-2 left-2 flex flex-col gap-1">
@@ -429,7 +432,10 @@ export default function HomePage() {
                   {p.thumbnail ? (
                     <img src={p.thumbnail} alt={p.titulo} className="w-full h-full object-contain p-4" />
                   ) : (
-                    <span className="text-5xl opacity-20">👜</span>
+                    <div className="flex flex-col items-center gap-2">
+                      <span className="text-6xl">{p.plataforma === 'shopee' ? '🧡' : p.plataforma === 'mercadolivre' ? '🛒' : '👜'}</span>
+                      <span className="text-sm text-gray-400 font-medium">Imagem indisponível</span>
+                    </div>
                   )}
                 </div>
 
