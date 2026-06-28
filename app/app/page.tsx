@@ -334,11 +334,13 @@ export default function HomePage() {
                     ) : (
                       <span className="text-4xl opacity-20">👜</span>
                     )}
+                    {p.desconto_percent != null && p.desconto_percent > 0 && (
                     <div className="absolute top-2 left-2 flex flex-col gap-1">
                       <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-lg shadow">
                         -{p.desconto_percent}%
                       </span>
                     </div>
+                    )}
                     {p.frete_gratis && (
                       <span className="absolute bottom-2 left-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-lg">
                         FRETE GRÁTIS
@@ -354,11 +356,15 @@ export default function HomePage() {
                     </div>
                     <p className="text-xs text-gray-600 line-clamp-2 leading-snug mb-3">{p.titulo}</p>
                     <div className="mt-auto">
-                      <p className="text-xs text-gray-400 line-through">{fmt(p.preco_original)}</p>
+                      {p.preco_original != null && p.preco_original > p.preco && (
+                        <p className="text-xs text-gray-400 line-through">{fmt(p.preco_original)}</p>
+                      )}
                       <p className="text-xl font-black text-gray-900">{fmt(p.preco)}</p>
-                      <p className="text-xs text-emerald-500 font-semibold mt-0.5">
-                        Economize {fmt(p.preco_original - p.preco)}
-                      </p>
+                      {p.preco_original != null && p.preco_original > p.preco && (
+                        <p className="text-xs text-emerald-500 font-semibold mt-0.5">
+                          Economize {fmt(p.preco_original - p.preco)}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="px-3.5 pb-3.5">
@@ -390,9 +396,10 @@ export default function HomePage() {
       {produtoModal && (() => {
         const p = produtoModal
         const link = p.link_afiliado || p.link_original
-        const economia = p.preco_original - p.preco
-        const msgTelegram = encodeURIComponent(`🔥 ${p.titulo}\n💰 ${fmt(p.preco)} (era ${fmt(p.preco_original)}) — ${p.desconto_percent}% OFF\n🔗 ${link}`)
-        const msgWhatsapp = encodeURIComponent(`🔥 *${p.titulo}*\n💰 ${fmt(p.preco)} (era ${fmt(p.preco_original)}) — *${p.desconto_percent}% OFF*\n🔗 ${link}`)
+        const economia = (p.preco_original ?? p.preco) - p.preco
+        const temDesconto = p.preco_original != null && p.preco_original > p.preco
+        const msgTelegram = encodeURIComponent(`🔥 ${p.titulo}\n💰 ${fmt(p.preco)}${temDesconto ? ` (era ${fmt(p.preco_original)}) — ${p.desconto_percent ?? 0}% OFF` : ''}\n🔗 ${link}`)
+        const msgWhatsapp = encodeURIComponent(`🔥 *${p.titulo}*\n💰 ${fmt(p.preco)}${temDesconto ? ` (era ${fmt(p.preco_original)}) — *${p.desconto_percent ?? 0}% OFF*` : ''}\n🔗 ${link}`)
         const plataformaLabel = p.plataforma === 'shopee' ? '🧡 Shopee' : p.plataforma === 'amazon' ? '📦 Amazon' : p.plataforma === 'aliexpress' ? '🔴 AliExpress' : p.plataforma === 'awin' ? '🏪 ' + (p.loja_nome || 'Loja Parceira') : p.plataforma === 'lomadee' ? '🏬 Oferta Parceiro' : '🛒 Mercado Livre'
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setProdutoModal(null)}>
@@ -432,11 +439,11 @@ export default function HomePage() {
 
                   <div className="flex items-end gap-3 mb-1">
                     <span className="text-3xl font-extrabold text-gray-900">{fmt(p.preco)}</span>
-                    <span className="text-sm text-gray-400 line-through mb-1">{fmt(p.preco_original)}</span>
+                    {temDesconto && <span className="text-sm text-gray-400 line-through mb-1">{fmt(p.preco_original)}</span>}
                   </div>
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="bg-red-500 text-white text-sm font-bold px-2.5 py-0.5 rounded-full">-{p.desconto_percent}%</span>
-                    <span className="text-sm text-emerald-600 font-medium">Economize {fmt(economia)}</span>
+                    {temDesconto && <span className="bg-red-500 text-white text-sm font-bold px-2.5 py-0.5 rounded-full">-{p.desconto_percent}%</span>}
+                    {temDesconto && <span className="text-sm text-emerald-600 font-medium">Economize {fmt(economia)}</span>}
                     {p.frete_gratis && <span className="text-sm text-emerald-600 font-medium">🚚 Frete grátis</span>}
                   </div>
 
