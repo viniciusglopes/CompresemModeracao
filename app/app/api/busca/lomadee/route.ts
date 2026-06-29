@@ -152,6 +152,7 @@ export async function POST(request: Request) {
       const descontoPercent = Math.round(((precoOriginal - preco) / precoOriginal) * 100)
       const nichoReal = nichoFromTitulo(item.name || '') ?? nicho
       const thumbnail = item.images?.[0]?.url || ''
+      if (!thumbnail) continue
       const linkOriginal = item.url || ''
       const seller = item.seller || ''
 

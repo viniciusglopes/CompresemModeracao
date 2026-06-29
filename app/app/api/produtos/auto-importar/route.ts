@@ -211,6 +211,8 @@ export async function POST(request: Request) {
           updated_at: new Date().toISOString(),
         }
 
+        if (!apenas_preview && !prod.thumbnail) continue
+
         if (!apenas_preview) {
           const { error } = await supabaseAdmin
             .from('produtos')

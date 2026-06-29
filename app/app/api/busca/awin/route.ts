@@ -287,7 +287,7 @@ export async function POST(request: Request) {
         loja_nome: loja.nome,
         updated_at: new Date().toISOString(),
       }
-    }).filter(p => p.titulo && p.preco > 0)
+    }).filter(p => p.titulo && p.preco > 0 && p.thumbnail)
 
     await supabaseAdmin
       .from('config_plataformas')
