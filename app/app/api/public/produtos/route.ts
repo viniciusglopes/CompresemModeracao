@@ -94,6 +94,7 @@ async function fixAffiliateLinkInline(
   try {
     if (plataforma === 'mercadolivre' && configs.ml_tag) {
       const resolved = await resolverUrl(linkOriginal)
+      if (resolved.includes('mercadolivre.com') && !resolved.includes('/p/')) return null
       return buildMlAffiliateLinkInline(resolved, configs.ml_tag)
     }
     if (plataforma === 'amazon' && configs.amazon_tag) {

@@ -42,6 +42,42 @@ async function fetchMlThumbnail(itemId: string, token: string): Promise<string |
   }
 }
 
+async function resolverMlProductUrl(url: string): Promise<string | null> {
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes('mercadolivre.com') && u.pathname.includes('/p/')) return url
+    if (!u.hostname.includes('mercadolivre.com') && !u.hostname.includes('meli.la')) return url
+
+    const resolved = await resolverUrl(url)
+    const ru = new URL(resolved)
+    if (ru.pathname.includes('/p/')) return resolved
+
+    const res = await fetch(resolved, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1)' },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) return null
+    const html = await res.text()
+
+    const canonicalMatch = html.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']+)["']/i)
+    if (canonicalMatch?.[1]?.includes('/p/')) return canonicalMatch[1]
+
+    const ogUrlMatch = html.match(/<meta[^>]*property=["']og:url["'][^>]*content=["']([^"']+)["']/i)
+      || html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:url["']/i)
+    if (ogUrlMatch?.[1]?.includes('/p/')) return ogUrlMatch[1]
+
+    const mlbMatch = html.match(/https?:\/\/[^"'\s]*mercadolivre\.com\.br\/[^"'\s]*\/p\/MLB[^"'\s]*/i)
+    if (mlbMatch) return mlbMatch[0]
+
+    const mlbIdMatch = html.match(/MLB[-_]?(\d{8,14})/i)
+    if (mlbIdMatch) return `https://www.mercadolivre.com.br/p/${mlbIdMatch[0].replace('-','')}`
+
+    return null
+  } catch {
+    return null
+  }
+}
+
 async function fetchThumbnailByOg(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
@@ -196,6 +232,7 @@ async function buildAffiliateLink(
   const platform = plataforma || detectPlatform(resolved)
 
   if (platform === 'mercadolivre' && configs.ml_tag) {
+    if (resolved.includes('mercadolivre.com') && !resolved.includes('/p/')) return null
     return buildMlAffiliateLink(resolved, configs.ml_tag)
   }
   if (platform === 'amazon' && configs.amazon_tag) {
@@ -303,7 +340,10 @@ export async function GET(request: Request) {
 
     try {
       // Resolve URL once (shared between thumbnail and affiliate logic)
-      if (g.plataforma === 'mercadolivre' || g.plataforma === 'amazon' || !g.plataforma) {
+      if (g.plataforma === 'mercadolivre' || !g.plataforma) {
+        resolvedUrl = await resolverMlProductUrl(g.link_original)
+        if (!resolvedUrl) resolvedUrl = await resolverUrl(g.link_original)
+      } else if (g.plataforma === 'amazon') {
         resolvedUrl = await resolverUrl(g.link_original)
       }
 
