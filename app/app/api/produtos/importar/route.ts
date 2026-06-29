@@ -775,6 +775,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Titulo é obrigatório. Preencha manualmente.' }, { status: 422 })
     }
 
+    if (!produto.thumbnail) {
+      return NextResponse.json({ error: 'Produto sem imagem. Envie o campo "thumbnail" com a URL da imagem.' }, { status: 422 })
+    }
+
     const { data: salvo, error } = await supabaseAdmin
       .from('produtos')
       .upsert(produto, { onConflict: 'produto_id_externo,plataforma', ignoreDuplicates: false })

@@ -186,6 +186,7 @@ export async function POST(request: Request) {
       const salvos: any[] = []
 
       for (const prod of produtos) {
+        if (!prod.thumbnail) continue
         await new Promise(r => setTimeout(r, 300))
         const awinLink = await gerarLinkAwin(prod.merchantId, prod.link, awinToken, publisherId)
         const linkAfiliado = awinLink?.shortUrl || awinLink?.url || prod.link

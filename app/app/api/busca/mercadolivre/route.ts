@@ -340,9 +340,12 @@ export async function POST(request: Request) {
       }
     })
 
+    // Filtra produtos sem imagem válida
+    const produtosComImagem = produtos.filter(p => p.thumbnail)
+
     const { data: salvos, error } = await supabaseAdmin
       .from('produtos')
-      .upsert(produtos, { onConflict: 'produto_id_externo,plataforma', ignoreDuplicates: false })
+      .upsert(produtosComImagem, { onConflict: 'produto_id_externo,plataforma', ignoreDuplicates: false })
       .select('id')
 
     if (error) {
@@ -350,7 +353,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const qtdSalvos = salvos?.length || produtos.length
+    const qtdSalvos = salvos?.length || produtosComImagem.length
     const respData = {
       salvos: qtdSalvos,
       total_encontrados: todosItens.length,

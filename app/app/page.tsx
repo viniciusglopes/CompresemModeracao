@@ -131,7 +131,7 @@ export default function HomePage() {
     if (after) params.set('after', after)
     const res = await fetch(`/api/public/produtos?${params}`)
     const data = await res.json()
-    return (data.produtos || []) as Produto[]
+    return ((data.produtos || []) as Produto[]).filter(p => p.thumbnail)
   }
 
   const load = useCallback(async () => {
