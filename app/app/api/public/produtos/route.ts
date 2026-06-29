@@ -140,15 +140,30 @@ export async function GET(request: Request) {
 
   const { data: garimpados } = await queryG
 
+  const affiliateConfigs = await getAffiliateConfigs()
+
   const garimpNorm = (garimpados || []).map(g => {
     let linkAfiliado = g.link_afiliado
-    if (linkAfiliado && g.plataforma === 'mercadolivre') {
-      try {
-        const u = new URL(linkAfiliado)
-        if (u.hostname.includes('mercadolivre.com') && !u.pathname.includes('/p/')) {
+    if (g.plataforma === 'mercadolivre') {
+      let needsFix = false
+      if (linkAfiliado) {
+        try {
+          const u = new URL(linkAfiliado)
+          if (u.hostname.includes('mercadolivre.com') && !u.pathname.includes('/p/')) needsFix = true
+          if (u.hostname.includes('meli.la')) needsFix = true
+        } catch { needsFix = true }
+      } else {
+        needsFix = true
+      }
+      if (needsFix && g.thumbnail) {
+        const mlbMatch = g.thumbnail.match(/MLB[-_]?(\d{8,14})/i)
+        if (mlbMatch) {
+          linkAfiliado = `https://www.mercadolivre.com.br/p/MLB${mlbMatch[1]}`
+          if (affiliateConfigs.ml_tag) linkAfiliado += `?matt_tool=${affiliateConfigs.ml_tag}`
+        } else {
           linkAfiliado = g.link_original
         }
-      } catch {
+      } else if (needsFix) {
         linkAfiliado = g.link_original
       }
     }
@@ -204,10 +219,9 @@ export async function GET(request: Request) {
     (p.plataforma === 'mercadolivre' || p.plataforma === 'amazon')
   )
   if (semAfiliado.length > 0) {
-    const configs = await getAffiliateConfigs()
     const batch = semAfiliado.slice(0, 5)
     const promises = batch.map(async (p) => {
-      const newLink = await fixAffiliateLinkInline(p.link_original, p.plataforma, configs)
+      const newLink = await fixAffiliateLinkInline(p.link_original, p.plataforma, affiliateConfigs)
       if (newLink) {
         p.link_afiliado = newLink
         // Fire-and-forget: persist to DB so next request doesn't need to fix again

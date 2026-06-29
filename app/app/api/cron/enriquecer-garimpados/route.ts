@@ -263,7 +263,7 @@ export async function GET(request: Request) {
   // and also fetch recent garimpados to check link_afiliado === link_original in code
   const { data: semAfiliadoNull, error: errAfiliado } = await supabaseAdmin
     .from('produtos_garimpados')
-    .select('id, link_original, link_afiliado, plataforma, titulo')
+    .select('id, link_original, link_afiliado, plataforma, titulo, thumbnail')
     .is('link_afiliado', null)
     .order('criado_em', { ascending: false })
     .limit(batchSize)
@@ -271,7 +271,7 @@ export async function GET(request: Request) {
   // Also fetch recent garimpados that HAVE link_afiliado to check if it equals link_original
   const { data: recentWithLink } = await supabaseAdmin
     .from('produtos_garimpados')
-    .select('id, link_original, link_afiliado, plataforma, titulo')
+    .select('id, link_original, link_afiliado, plataforma, titulo, thumbnail')
     .not('link_afiliado', 'is', null)
     .order('criado_em', { ascending: false })
     .limit(batchSize)
@@ -375,7 +375,17 @@ export async function GET(request: Request) {
 
       // --- Affiliate Link ---
       if (g.needsAffiliate) {
-        linkAfiliado = await buildAffiliateLink(g.link_original, g.plataforma, resolvedUrl, configs)
+        let effectiveResolved = resolvedUrl
+        if (g.plataforma === 'mercadolivre' && (!effectiveResolved || (effectiveResolved.includes('mercadolivre.com') && !effectiveResolved.includes('/p/')))) {
+          const thumbSource = thumbnail || (g as any).thumbnail
+          if (thumbSource) {
+            const mlbFromThumb = thumbSource.match(/MLB[-_]?(\d{8,14})/i)
+            if (mlbFromThumb) {
+              effectiveResolved = `https://www.mercadolivre.com.br/p/MLB${mlbFromThumb[1]}`
+            }
+          }
+        }
+        linkAfiliado = await buildAffiliateLink(g.link_original, g.plataforma, effectiveResolved, configs)
       }
     } catch {}
 
