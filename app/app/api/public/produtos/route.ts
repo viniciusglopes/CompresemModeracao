@@ -144,12 +144,9 @@ export async function GET(request: Request) {
     if (linkAfiliado && g.plataforma === 'mercadolivre') {
       try {
         const u = new URL(linkAfiliado)
-        const path = u.pathname.replace(/^\//, '')
-        const isBrokenShortcode = u.hostname.includes('mercadolivre.com') &&
-          !u.pathname.includes('/p/') &&
-          !u.pathname.match(/MLB[-_]?\d/) &&
-          path.length < 15
-        if (isBrokenShortcode) linkAfiliado = g.link_original
+        if (u.hostname.includes('mercadolivre.com') && !u.pathname.includes('/p/')) {
+          linkAfiliado = g.link_original
+        }
       } catch {
         linkAfiliado = g.link_original
       }
