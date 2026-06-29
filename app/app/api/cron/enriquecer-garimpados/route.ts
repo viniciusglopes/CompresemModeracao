@@ -18,10 +18,10 @@ async function resolverUrl(url: string): Promise<string> {
 function extrairMlbId(url: string): string | null {
   try {
     const parsed = new URL(url)
-    const m = parsed.pathname.match(/(ML[A-Z]-?\d{8,14})/)
+    const m = parsed.pathname.match(/(MLB-?\d{8,14})/)
     if (m) return m[1].replace('-', '')
-    const itemMatch = url.match(/ML[A-Z][- _]?(\d+)/i)
-    if (itemMatch) return `${url.match(/ML[A-Z]/i)![0].toUpperCase()}${itemMatch[1]}`
+    const itemMatch = url.match(/MLB[- _]?(\d+)/i)
+    if (itemMatch) return `MLB${itemMatch[1]}`
   } catch {}
   return null
 }
@@ -379,9 +379,9 @@ export async function GET(request: Request) {
         if (g.plataforma === 'mercadolivre' && (!effectiveResolved || (effectiveResolved.includes('mercadolivre.com') && !effectiveResolved.includes('/p/')))) {
           const thumbSource = thumbnail || (g as any).thumbnail
           if (thumbSource) {
-            const mlFromThumb = thumbSource.match(/ML[A-Z][-_]?(\d{8,14})/i)
-            if (mlFromThumb) {
-              effectiveResolved = `https://www.mercadolivre.com.br/p/${mlFromThumb[0].replace(/[-_]/g, '')}`
+            const mlbFromThumb = thumbSource.match(/MLB[-_]?(\d{8,14})/i)
+            if (mlbFromThumb) {
+              effectiveResolved = `https://www.mercadolivre.com.br/p/MLB${mlbFromThumb[1]}`
             }
           }
         }
