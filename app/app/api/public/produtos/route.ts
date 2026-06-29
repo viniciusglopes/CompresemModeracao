@@ -156,9 +156,9 @@ export async function GET(request: Request) {
         needsFix = true
       }
       if (needsFix && g.thumbnail) {
-        const mlbMatch = g.thumbnail.match(/MLB[-_]?(\d{8,14})/i)
-        if (mlbMatch) {
-          linkAfiliado = `https://www.mercadolivre.com.br/p/MLB${mlbMatch[1]}`
+        const mlMatch = g.thumbnail.match(/ML[A-Z][-_]?(\d{8,14})/i)
+        if (mlMatch) {
+          linkAfiliado = `https://www.mercadolivre.com.br/p/${mlMatch[0].replace(/[-_]/g, '')}`
           if (affiliateConfigs.ml_tag) linkAfiliado += `?matt_tool=${affiliateConfigs.ml_tag}`
         } else {
           linkAfiliado = g.link_original
