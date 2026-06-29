@@ -139,23 +139,39 @@ export async function GET(request: Request) {
 
   const { data: garimpados } = await queryG
 
-  const garimpNorm = (garimpados || []).map(g => ({
-    id: g.id,
-    titulo: g.titulo,
-    preco: g.preco,
-    preco_original: g.preco_original,
-    desconto_percent: g.desconto_percent,
-    plataforma: g.plataforma,
-    link_afiliado: g.link_afiliado,
-    link_original: g.link_original,
-    thumbnail: g.thumbnail || null,
-    nicho: null,
-    frete_gratis: false,
-    loja_nome: g.fonte_grupo,
-    created_at: g.criado_em,
-    origem: 'garimpado' as const,
-    cupom: g.cupom,
-  }))
+  const garimpNorm = (garimpados || []).map(g => {
+    let linkAfiliado = g.link_afiliado
+    if (linkAfiliado && g.plataforma === 'mercadolivre') {
+      try {
+        const u = new URL(linkAfiliado)
+        const path = u.pathname.replace(/^\//, '')
+        const isBrokenShortcode = u.hostname.includes('mercadolivre.com') &&
+          !u.pathname.includes('/p/') &&
+          !u.pathname.match(/MLB[-_]?\d/) &&
+          path.length < 15
+        if (isBrokenShortcode) linkAfiliado = g.link_original
+      } catch {
+        linkAfiliado = g.link_original
+      }
+    }
+    return {
+      id: g.id,
+      titulo: g.titulo,
+      preco: g.preco,
+      preco_original: g.preco_original,
+      desconto_percent: g.desconto_percent,
+      plataforma: g.plataforma,
+      link_afiliado: linkAfiliado,
+      link_original: g.link_original,
+      thumbnail: g.thumbnail || null,
+      nicho: null,
+      frete_gratis: false,
+      loja_nome: g.fonte_grupo,
+      created_at: g.criado_em,
+      origem: 'garimpado' as const,
+      cupom: g.cupom,
+    }
+  })
 
   const prodNorm = (produtos || []).map(p => ({ ...p, origem: 'api' as const }))
 

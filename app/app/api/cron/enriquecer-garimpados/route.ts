@@ -244,9 +244,23 @@ export async function GET(request: Request) {
     .order('criado_em', { ascending: false })
     .limit(batchSize)
 
+  const isBrokenMlShortcode = (link: string) => {
+    try {
+      const u = new URL(link)
+      const path = u.pathname.replace(/^\//, '')
+      return u.hostname.includes('mercadolivre.com') &&
+        !u.pathname.includes('/p/') &&
+        !u.pathname.match(/MLB[-_]?\d/) &&
+        path.length < 15
+    } catch { return false }
+  }
+
   const semAfiliado = [
     ...(semAfiliadoNull || []),
-    ...(recentWithLink || []).filter(g => g.link_afiliado === g.link_original),
+    ...(recentWithLink || []).filter(g =>
+      g.link_afiliado === g.link_original ||
+      (g.link_afiliado && isBrokenMlShortcode(g.link_afiliado))
+    ),
   ].slice(0, batchSize)
 
   if (errThumb || errAfiliado) {
