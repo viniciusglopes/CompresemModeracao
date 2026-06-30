@@ -142,7 +142,7 @@ export async function GET(request: Request) {
 
   const affiliateConfigs = await getAffiliateConfigs()
 
-  const garimpNorm = (garimpados || []).map(g => {
+  const garimpNorm = await Promise.all((garimpados || []).map(async g => {
     let linkAfiliado = g.link_afiliado
     if (g.plataforma === 'mercadolivre') {
       let needsFix = false
@@ -155,12 +155,20 @@ export async function GET(request: Request) {
       } else {
         needsFix = true
       }
-      if (needsFix && g.thumbnail) {
-        const mlbMatch = g.thumbnail.match(/MLB[-_]?(\d{8,14})/i)
-        if (mlbMatch) {
-          linkAfiliado = `https://www.mercadolivre.com.br/p/MLB${mlbMatch[1]}`
-          if (affiliateConfigs.ml_tag) linkAfiliado += `?matt_tool=${affiliateConfigs.ml_tag}`
-        } else {
+      if (needsFix && affiliateConfigs.ml_tag) {
+        const resolved = await resolverUrl(g.link_original)
+        try {
+          const u = new URL(resolved)
+          if (u.pathname.includes('/p/')) {
+            u.searchParams.set('matt_tool', affiliateConfigs.ml_tag)
+            linkAfiliado = u.toString()
+          } else if (u.hostname.includes('mercadolivre.com')) {
+            u.searchParams.set('matt_tool', affiliateConfigs.ml_tag)
+            linkAfiliado = u.toString()
+          } else {
+            linkAfiliado = g.link_original
+          }
+        } catch {
           linkAfiliado = g.link_original
         }
       } else if (needsFix) {
@@ -184,7 +192,7 @@ export async function GET(request: Request) {
       origem: 'garimpado' as const,
       cupom: g.cupom,
     }
-  })
+  }))
 
   const prodNorm = (produtos || []).map(p => ({ ...p, origem: 'api' as const }))
 

@@ -227,8 +227,10 @@ async function buildAffiliateLink(
   const platform = plataforma || detectPlatform(resolved)
 
   if (platform === 'mercadolivre' && configs.ml_tag) {
-    if (resolved.includes('mercadolivre.com') && !resolved.includes('/p/')) return null
-    return buildMlAffiliateLink(resolved, configs.ml_tag)
+    if (resolved.includes('mercadolivre.com')) {
+      return buildMlAffiliateLink(resolved, configs.ml_tag)
+    }
+    return null
   }
   if (platform === 'amazon' && configs.amazon_tag) {
     return buildAmazonAffiliateLink(resolved, configs.amazon_tag)
@@ -375,17 +377,7 @@ export async function GET(request: Request) {
 
       // --- Affiliate Link ---
       if (g.needsAffiliate) {
-        let effectiveResolved = resolvedUrl
-        if (g.plataforma === 'mercadolivre' && (!effectiveResolved || (effectiveResolved.includes('mercadolivre.com') && !effectiveResolved.includes('/p/')))) {
-          const thumbSource = thumbnail || (g as any).thumbnail
-          if (thumbSource) {
-            const mlbFromThumb = thumbSource.match(/MLB[-_]?(\d{8,14})/i)
-            if (mlbFromThumb) {
-              effectiveResolved = `https://www.mercadolivre.com.br/p/MLB${mlbFromThumb[1]}`
-            }
-          }
-        }
-        linkAfiliado = await buildAffiliateLink(g.link_original, g.plataforma, effectiveResolved, configs)
+        linkAfiliado = await buildAffiliateLink(g.link_original, g.plataforma, resolvedUrl, configs)
       }
     } catch {}
 
