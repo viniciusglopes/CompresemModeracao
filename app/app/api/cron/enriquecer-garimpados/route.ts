@@ -8,7 +8,12 @@ const ML_API = 'https://api.mercadolibre.com'
 
 async function resolverUrl(url: string): Promise<string> {
   try {
-    const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(8000) })
+    const res = await fetch(url, {
+      method: 'HEAD',
+      redirect: 'follow',
+      signal: AbortSignal.timeout(8000),
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+    })
     return res.url || url
   } catch {
     return url
