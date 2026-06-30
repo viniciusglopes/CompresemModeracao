@@ -6,7 +6,6 @@ import { supabaseAdmin } from '@/lib/supabase'
 async function resolverUrl(url: string): Promise<string> {
   try {
     const res = await fetch(url, {
-      method: 'HEAD',
       redirect: 'follow',
       signal: AbortSignal.timeout(5000),
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
