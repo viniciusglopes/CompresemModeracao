@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { detectarNichoRegex } from '@/lib/nicho'
 import { supabaseAdmin } from '@/lib/supabase'
 import { calcularScore } from '@/lib/score'
 import { logApi } from '@/lib/api-logger'
@@ -27,22 +28,10 @@ interface ProdutoExtraido {
   imagem: string
 }
 
-function nichoFromTitulo(titulo: string): string | null {
-  const t = titulo.toLowerCase()
-  if (/(celular|smartphone|iphone|samsung|xiaomi|fone|smartwatch|carregador|power.?bank|caixa de som)/.test(t)) return 'eletronicos'
-  if (/(notebook|laptop|mouse|teclado|monitor|ssd|pendrive|webcam|impressora)/.test(t)) return 'informatica'
-  if (/(fritadeira|air.?fryer|aspirador|liquidificador|cafeteira|ventilador|micro.?ondas|geladeira)/.test(t)) return 'eletrodomesticos'
-  if (/(playstation|ps[45]|xbox|nintendo|headset gamer|console)/.test(t)) return 'games'
-  if (/(vestido|blusa|calça|camisa|bermuda|moletom|jaqueta|saia|bolsa|óculos|relógio|anel|brinco|colar|pulseira|pingente|aliança|joia)/.test(t)) return 'moda'
-  if (/(perfume|maquiagem|batom|hidratante|shampoo|protetor solar|sérum|esmalte|lingerie|suti[aã]|calcinha|pijama|body)/.test(t)) return 'beleza'
-  if (/(luminária|cortina|tapete|organizador|jogo de cama|travesseiro|edredom)/.test(t)) return 'casa_moveis'
-  if (/(tênis|tenis|halter|bicicleta|esteira|chuteira|whey|creatina|legging)/.test(t)) return 'calcados'
-  if (/(fralda|carrinho.*bebê|mamadeira|chupeta|berço)/.test(t)) return 'bebes'
-  if (/(ração|coleira|brinquedo.*(cão|gato|cachorro|pet)|areia.*gato)/.test(t)) return 'pet_shop'
-  if (/(furadeira|parafusadeira|alicate|esmerilhadeira|serra)/.test(t)) return 'ferramentas'
-  if (/(lego|boneca|hot wheels|nerf|quebra-cabeça|brinquedo)/.test(t)) return 'brinquedos'
-  return null
-}
+// Classificacao vem do modulo unico (@/lib/nicho). A copia local que existia
+// aqui devolvia ids que NAO existem no cadastro de grupos, entao o produto
+// nunca casava com grupo nenhum.
+const nichoFromTitulo = detectarNichoRegex
 
 function gerarDeeplink(merchantId: string, urlProduto: string): string {
   return `https://www.awin1.com/cread.php?awinmid=${merchantId}&awinaffid=${PUBLISHER_ID}&ued=${encodeURIComponent(urlProduto)}`

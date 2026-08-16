@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { detectarNichoRegex } from '@/lib/nicho'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getMlAccessToken } from '@/lib/ml-auth'
 import { logApi } from '@/lib/api-logger'
@@ -59,33 +60,11 @@ function nichoFromDomainId(domainId: string): string | null {
 }
 
 // Fallback: classifica pelo título do produto
-function nichoFromTitulo(titulo: string): string | null {
-  const t = titulo.toLowerCase()
-  if (/(celular|smartphone|iphone|samsung galaxy|motorola moto|xiaomi|redmi|realme|poco x)/.test(t)) return 'eletronicos'
-  if (/(liquidificador|geladeira|fogão|máquina de lavar|micro-ondas|aspirador|ar-condicionado|fritadeira|tanquinho|ventilador|purificador)/.test(t)) return 'eletrodomesticos'
-  if (/(notebook|laptop|computador|monitor|teclado|mouse sem fio|impressora|hd externo|pendrive|memória ram|ssd|placa de vídeo|filamento (pla|petg|abs)|impressora 3d)/.test(t)) return 'informatica'
-  if (/(televisão|tv \d|smart tv|headphone|fone de ouvido|caixa de som|soundbar|home theater|amplificador|receiver)/.test(t)) return 'audio_video'
-  if (/(câmera|camera (digital|mirrorless|slr)|lente para|gopro|instax|canon eos|nikon d|drone dji)/.test(t)) return 'cameras'
-  if (/(playstation|ps[45]|xbox|nintendo switch|controle (sem fio|ps|xbox)|jogo (ps|xbox|switch))/.test(t)) return 'games'
-  if (/(tênis |tenis |sapato |chinelo |bota |sandália |mocassim |sapatilha |rasteirinha )/.test(t)) return 'calcados'
-  if (/(vestido|blusa feminina|calça jeans|camisa masculina|bermuda|moletom|jaqueta|casaco|saia |bolsa feminina|mochila (feminina|masculina)|óculos de sol|relógio (masculino|feminino))/.test(t)) return 'moda'
-  if (/(shampoo|condicionador|creme (facial|corporal|hidratante)|maquiagem|batom|perfume |desodorante|hidratante|sérum|filtro solar|esmalte|base liquida)/.test(t)) return 'beleza'
-  if (/(sofá|colchão|armário|mesa (de jantar|escritório)|cadeira (gamer|escritório|sala)|guarda-roupa|cortina|tapete|luminária|lençol|travesseiro|edredom|capa de colchão|papel higiênico|jogo de cama)/.test(t)) return 'casa_moveis'
-  if (/(furadeira|parafusadeira|martelo|chave de fenda|alicate|esmerilhadeira|nível a laser|fita métrica|berbequim)/.test(t)) return 'ferramentas'
-  if (/(bicicleta |bike |esteira |halter|anilha|suplemento esportivo|whey protein|creatina|chuteira|luva de boxe|patins|skate)/.test(t)) return 'esportes'
-  if (/(fralda|carrinho de bebê|berço|mamadeira|chupeta|brinquedo de bebê|roupa de bebê)/.test(t)) return 'bebes'
-  if (/(lego|boneca|hot wheels|nerf |quebra-cabeça|patinete infantil|bicicleta infantil|triciclo infantil|blocos (magnéticos|imã)|brinquedo (educativo|infantil))/.test(t)) return 'brinquedos'
-  if (/(capa para carro|tapete automotivo|som automotivo|suporte veicular|óleo (motor|lubrificante))/.test(t)) return 'veiculos_acess'
-  if (/(livro |romance |literatura |mangá|hq |quadrinhos|bíblia|dicionário)/.test(t)) return 'livros'
-  if (/(suplemento vitamina|termômetro|aparelho de pressão|vitamina [a-z]|ômega|probiótico|remédio|barbeador|cortador de cabelo)/.test(t)) return 'saude'
-  if (/(café |chocolate |biscoito |suco |cerveja |vinho |azeite |tempero |proteína em pó)/.test(t)) return 'alimentos'
-  if (/(guitarra|violão|piano digital|teclado musical|bateria acústica|baixo elétrico|ukulele)/.test(t)) return 'musica'
-  if (/(ração para|coleira|petisco para|brinquedo para (cão|gato|cachorro)|areia para gato|aquário)/.test(t)) return 'pet_shop'
-  return null
-}
-
-function resolverNicho(domainId: string, titulo: string, nichoFallback: string): string {
-  return nichoFromDomainId(domainId) || nichoFromTitulo(titulo) || nichoFallback
+// domain_id do ML e a fonte mais confiavel (taxonomia do proprio ML); so
+// quando ele nao resolve caimos na regex do modulo unico; por ultimo o nicho
+// que o usuario pesquisou (aqui o fallback e legitimo, nao e chute).
+function resolverNichoML(domainId: string, titulo: string, nichoFallback: string): string {
+  return nichoFromDomainId(domainId) || detectarNichoRegex(titulo) || nichoFallback
 }
 
 function buildAffiliateLink(url: string, tag: string, word?: string): string {
@@ -309,7 +288,7 @@ export async function POST(request: Request) {
     const produtos = todosItens.slice(0, limite).map((item: any) => {
       const descPercent = Math.round(((item.original_price - item.price) / item.original_price) * 100)
       const linkOriginal = item.permalink || `https://www.mercadolivre.com.br/p/${item.id}`
-      const nichoReal = resolverNicho(item.domain_id || '', item.title || '', nicho)
+      const nichoReal = resolverNichoML(item.domain_id || '', item.title || '', nicho)
       const freteGratis = item.shipping?.free_shipping || false
       const lojaPremium = !!(item.official_store_id || item.listing_type_id === 'gold_pro')
       const { score, detalhes } = calcularScore({

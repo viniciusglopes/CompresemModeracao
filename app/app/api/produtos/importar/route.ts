@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { resolverNicho } from '@/lib/nicho'
 import { createHash } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase'
 import { getMlAccessToken } from '@/lib/ml-auth'
@@ -485,32 +486,6 @@ async function buscarNoMl(termos: string): Promise<{ titulo: string; preco: numb
   }
 }
 
-// ─── Determina nicho pelo título e plataforma ─────────────────────────────────
-
-function inferirNicho(titulo: string): string {
-  const t = titulo.toLowerCase()
-  if (/(celular|smartphone|iphone|samsung galaxy|motorola|xiaomi|redmi)/.test(t)) return 'eletronicos'
-  if (/(liquidificador|geladeira|fogão|máquina de lavar|micro-ondas|aspirador|ar-condicionado|fritadeira)/.test(t)) return 'eletrodomesticos'
-  if (/(notebook|laptop|computador|monitor|teclado|mouse|impressora|hd externo|ssd|placa)/.test(t)) return 'informatica'
-  if (/(televisão|tv \d|smart tv|headphone|fone de ouvido|caixa de som|soundbar)/.test(t)) return 'audio_video'
-  if (/(câmera|gopro|drone|instax|canon|nikon)/.test(t)) return 'cameras'
-  if (/(playstation|ps[45]|xbox|nintendo switch|controle sem fio)/.test(t)) return 'games'
-  if (/(tênis |tenis |sapato |chinelo |bota |sandália )/.test(t)) return 'calcados'
-  if (/(vestido|blusa|calça jeans|camisa|bermuda|moletom|jaqueta|bolsa)/.test(t)) return 'moda'
-  if (/(shampoo|perfume|maquiagem|hidratante|filtro solar|creme)/.test(t)) return 'beleza'
-  if (/(sofá|colchão|armário|mesa|cadeira|guarda-roupa|tapete|lençol)/.test(t)) return 'casa_moveis'
-  if (/(furadeira|parafusadeira|esmerilhadeira|chave de fenda|alicate)/.test(t)) return 'ferramentas'
-  if (/(bicicleta|esteira|halter|suplemento esportivo|whey|chuteira|skate)/.test(t)) return 'esportes'
-  if (/(fralda|carrinho de bebê|berço|mamadeira)/.test(t)) return 'bebes'
-  if (/(lego|boneca|hot wheels|nerf|quebra-cabeça)/.test(t)) return 'brinquedos'
-  if (/(ração|coleira|petisco|areia para gato|aquário)/.test(t)) return 'pet_shop'
-  if (/(vitamina|termômetro|aparelho de pressão|suplemento)/.test(t)) return 'saude'
-  if (/(guitarra|violão|piano|bateria|teclado musical)/.test(t)) return 'musica'
-  if (/(café|chocolate|biscoito|suco|cerveja|vinho|azeite)/.test(t)) return 'alimentos'
-  if (/(livro|romance|mangá|hq|bíblia|dicionário)/.test(t)) return 'livros'
-  return 'eletronicos'
-}
-
 // ─── Handler principal ────────────────────────────────────────────────────────
 
 export async function POST(request: Request) {
@@ -742,7 +717,9 @@ export async function POST(request: Request) {
       ? Math.round(((dados.preco_original - dados.preco) / dados.preco_original) * 100)
       : 0
 
-    const nicho = nichoOverride || (dados.titulo ? inferirNicho(dados.titulo) : 'moda')
+    // Antes: `inferirNicho` local com fallback 'eletronicos' (e 'moda' quando
+    // faltava titulo). Agora: modulo unico — regex ampliada -> IA -> null.
+    const nicho = nichoOverride || (await resolverNicho(dados.titulo || ''))
 
     const produto = {
       titulo: dados.titulo || '',

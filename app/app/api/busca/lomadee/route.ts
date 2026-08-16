@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { detectarNichoRegex } from '@/lib/nicho'
 import { supabaseAdmin } from '@/lib/supabase'
 import { calcularScore } from '@/lib/score'
 import { logApi } from '@/lib/api-logger'
@@ -15,17 +16,10 @@ const CATEGORIAS_LOMADEE: Record<string, { label: string; keywords: string[]; em
   eletro:     { label: 'Eletro e Lifestyle', keywords: ['secador cabelo', 'chapinha', 'airfryer', 'cafeteira', 'aspirador robô', 'liquidificador', 'umidificador'], emoji: '✨' },
 }
 
-function nichoFromTitulo(titulo: string): string | null {
-  const t = titulo.toLowerCase()
-  if (/(bolsa|mochila feminina|carteira feminina|nécessaire|mala (de )?viagem)/.test(t)) return 'bolsas'
-  if (/(lingerie|sutiã|calcinha|meia.calça|camisola|body (renda|feminino))/.test(t)) return 'lingerie'
-  if (/(vestido|blusa feminina|saia|calça (jeans )?feminina|body feminino|cropped|legging|casaco feminino|jaqueta feminina|cardigan)/.test(t)) return 'moda'
-  if (/(perfume|creme (corporal|facial)|hidratante|sérum|óleo corporal|loção|sabonete|skincare)/.test(t)) return 'beleza'
-  if (/(sandália|bota feminina|tênis feminino|sapatilha|scarpin|rasteirinha|tamanco|chinelo feminino)/.test(t)) return 'calcados'
-  if (/(jogo de cama|toalha|cortina|tapete|organizador|luminária|edredom|travesseiro|lençol|vaso|quadro decorativo)/.test(t)) return 'casa'
-  if (/(secador|chapinha|prancha|airfryer|air ?fryer|cafeteira|aspirador|liquidificador|umidificador|fritadeira)/.test(t)) return 'eletro'
-  return null
-}
+// Classificacao vem do modulo unico (@/lib/nicho). A copia local que existia
+// aqui devolvia ids que NAO existem no cadastro de grupos, entao o produto
+// nunca casava com grupo nenhum.
+const nichoFromTitulo = detectarNichoRegex
 
 async function fetchLomadeeProducts(apiKey: string, keyword: string, page: number = 1): Promise<any[]> {
   const params = new URLSearchParams({

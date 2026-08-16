@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { detectarNichoRegex } from '@/lib/nicho'
 import { supabaseAdmin } from '@/lib/supabase'
 import { calcularScore } from '@/lib/score'
 import { createHash } from 'crypto'
@@ -20,22 +21,10 @@ const CATEGORIAS_SHOPEE: Record<string, { label: string; keywords: string[]; emo
   ferramentas:      { label: 'Ferramentas',              keywords: ['furadeira', 'jogo chave', 'parafusadeira', 'trena', 'alicate'], emoji: '🔧' },
 }
 
-function nichoFromTitulo(titulo: string): string | null {
-  const t = titulo.toLowerCase()
-  if (/(celular|smartphone|iphone|samsung galaxy|xiaomi|redmi|fone (de ouvido|bluetooth)|smartwatch|carregador (turbo|rápido|tipo c|usb)|power ?bank|caixa de som|alto.?falante|cabo (usb|hdmi|lightning)|película|capinha|suporte celular)/.test(t)) return 'eletronicos'
-  if (/(notebook|laptop|mouse (gamer|sem fio|pad)|teclado (mecânico|gamer)|monitor\b|ssd|pendrive|webcam|impressora|placa de vídeo|memória ram|hd externo|mesa.*(notebook|gamer)|suporte.*(notebook|monitor)|hub usb|adaptador (usb|hdmi))/.test(t)) return 'informatica'
-  if (/(fritadeira|air ?fryer|aspirador|liquidificador|ventilador|cafeteira|micro.?ondas|geladeira|máquina de lavar|fogão|ar.condicionado|panela (elétrica|pressão)|ferro de passar|mixer|processador de alimentos|purificador)/.test(t)) return 'eletrodomesticos'
-  if (/(playstation|ps[45]|xbox|nintendo|controle (gamer|ps|xbox)|headset gamer|jogo (ps|xbox|switch)|console|joystick)/.test(t)) return 'games'
-  if (/(vestido|blusa feminina|saia|calça (jeans )?feminina|moda feminina|body feminino|cropped|biquíni|maiô|legging|regata feminina)/.test(t)) return 'moda'
-  if (/(camisa masculina|calça masculina|bermuda|moletom masculino|camiseta masculina|polo masculin|cueca|short masculino)/.test(t)) return 'moda_masc'
-  if (/(perfume|maquiagem|batom|base líquida|hidratante|shampoo|condicionador|protetor solar|sérum|esmalte|creme (facial|corporal)|desodorante|rímel|corretivo|pó compacto|paleta de sombra)/.test(t)) return 'beleza'
-  if (/(luminária|cortina|tapete|organizador|jogo de cama|travesseiro|edredom|lençol|vaso|quadro decorativo|prateleira|toalha|porta.?(retrato|copos)|lixeira)/.test(t)) return 'casa'
-  if (/(tênis|tenis|halter|anilha|bicicleta|esteira|garrafa térmica|yoga|chuteira|luva de boxe|whey|creatina|suplemento|corda de pular|elástico fitness|caneleira|mochila esportiva)/.test(t)) return 'esportes'
-  if (/(fralda|carrinho (de )?bebê|mamadeira|chupeta|roupa (de )?bebê|brinquedo infantil|berço|babador|mordedor)/.test(t)) return 'bebes'
-  if (/(ração|coleira|brinquedo (para )?(cão|gato|cachorro|pet)|cama (para )?(pet|cachorro|gato)|areia (para )?gato|aquário|comedouro|bebedouro.*(pet|gato|cachorro))/.test(t)) return 'pet'
-  if (/(furadeira|parafusadeira|chave (de fenda|catraca|allen)|alicate|esmerilhadeira|trena|martelo|nível a laser|serra|lixadeira|jogo.*(chave|ferramenta|soquete))/.test(t)) return 'ferramentas'
-  return null
-}
+// Classificacao vem do modulo unico (@/lib/nicho). A copia local que existia
+// aqui devolvia ids que NAO existem no cadastro de grupos, entao o produto
+// nunca casava com grupo nenhum.
+const nichoFromTitulo = detectarNichoRegex
 
 function buildShopeeAuth(appId: string, secret: string, body: string): { authorization: string } {
   const timestamp = Math.floor(Date.now() / 1000)

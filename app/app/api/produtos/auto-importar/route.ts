@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { resolverNicho } from '@/lib/nicho'
 import { createHash } from 'crypto'
 import { supabaseAdmin } from '@/lib/supabase'
 
@@ -202,7 +203,7 @@ export async function POST(request: Request) {
           link_original: prod.link,
           link_afiliado: linkAfiliado,
           thumbnail: prod.thumbnail,
-          nicho: inferirNicho(prod.titulo),
+          nicho: await resolverNicho(prod.titulo),
           produto_id_externo: produtoId,
           frete_gratis: false,
           qtd_vendida: 0,
@@ -242,18 +243,4 @@ export async function POST(request: Request) {
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
   }
-}
-
-function inferirNicho(titulo: string): string {
-  const t = titulo.toLowerCase()
-  if (/(tênis|tenis|sapato|chinelo|bota|sandália|sandalia|scarpin|sapatilha|rasteira|mule)/.test(t)) return 'calcados'
-  if (/(legging|top .*(treino|fitness)|sutiã esportivo|shorts .*(corrida|treino|esport))/.test(t)) return 'esportes'
-  if (/(corrida|caminhada|running|academia|tennis|volleyball)/.test(t) && /(tênis|tenis)/.test(t)) return 'esportes'
-  if (/(vestido|blusa|calça|camisa|bermuda|moletom|jaqueta|bolsa|saia|shorts|macacão|cropped|regata|body|cardigan|pijama|camiseta|conjunto)/.test(t)) return 'moda'
-  if (/(brinco|anel|colar|pulseira|pingente|berloques|argola|joia|aliança|bracelete|choker|tornozeleira)/.test(t)) return 'joias'
-  if (/(relógio|relogio)/.test(t)) return 'relogios'
-  if (/(perfume|maquiagem|hidratante|shampoo|creme|batom|base|rímel|sombra)/.test(t)) return 'beleza'
-  if (/(lingerie|biquini|maiô|calcinha|sutiã)/.test(t)) return 'moda'
-  if (/(boné|mochila|bolsa|meia|cinto)/.test(t)) return 'moda'
-  return 'moda'
 }
