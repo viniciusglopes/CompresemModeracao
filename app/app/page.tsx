@@ -27,6 +27,8 @@ const NICHOS_GRID = [
   { id: 'bebes', label: 'Bebês & Kids', emoji: '🍼', gradient: 'from-yellow-200 to-amber-300' },
   { id: 'pet_shop', label: 'Pet Shop', emoji: '🐾', gradient: 'from-orange-200 to-red-300' },
   { id: 'eletrodomesticos', label: 'Eletro', emoji: '🏠', gradient: 'from-blue-200 to-indigo-300' },
+  { id: 'livros', label: 'Livros', emoji: '📚', gradient: 'from-lime-200 to-green-300' },
+  { id: 'brinquedos', label: 'Brinquedos', emoji: '🧸', gradient: 'from-fuchsia-200 to-pink-300' },
 ]
 
 function timeAgo(iso: string) {
@@ -257,7 +259,7 @@ export default function HomePage() {
       {/* Categorias em grid colorido */}
       <div className="max-w-7xl mx-auto px-4 py-5">
         <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Categorias</p>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+        <div className="grid grid-cols-4 sm:grid-cols-5 lg:grid-cols-10 gap-3">
           {NICHOS_GRID.map(n => (
             <button key={n.id} onClick={() => setNichoAtivo(nichoAtivo === n.id ? '' : n.id)} className="group">
               <div className={`bg-gradient-to-br ${n.gradient} rounded-2xl p-3 flex flex-col items-center gap-1.5 hover:shadow-lg hover:scale-105 transition-all duration-200 ${nichoAtivo === n.id ? 'ring-2 ring-pink-500 ring-offset-2 shadow-lg scale-105' : ''}`}>

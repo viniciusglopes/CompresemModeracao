@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div className="w-8 md:hidden" />
           <AdminNotificacoes />
         </header>
-        <main className="flex-1 p-8 overflow-auto">{children}</main>
+        <main className="flex-1 p-4 md:p-8 overflow-auto">{children}</main>
       </div>
     </div>
   )

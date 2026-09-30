@@ -20,30 +20,10 @@ import { type SupabaseClient } from '@supabase/supabase-js'
 // Extraida de app/admin/grupos/page.tsx — e a lista que o admin usa pra marcar
 // os nichos de cada grupo. Qualquer id fora daqui nunca casa com grupo nenhum.
 
-export const NICHOS_VALIDOS = [
-  'eletronicos',
-  'eletrodomesticos',
-  'informatica',
-  'audio_video',
-  'cameras',
-  'games',
-  'moda',
-  'calcados',
-  'beleza',
-  'casa_moveis',
-  'ferramentas',
-  'esportes',
-  'bebes',
-  'brinquedos',
-  'veiculos_acess',
-  'livros',
-  'saude',
-  'alimentos',
-  'musica',
-  'pet_shop',
-] as const
-
-export type Nicho = (typeof NICHOS_VALIDOS)[number]
+// Lista e rotulos moram em nicho-lista.ts (sem dependencias) para poderem ser
+// importados tambem por componentes de cliente.
+import { NICHOS_VALIDOS, NICHO_LABEL, type Nicho } from '@/lib/nicho-lista'
+export { NICHOS_VALIDOS, NICHO_LABEL, type Nicho }
 
 const SET_NICHOS: ReadonlySet<string> = new Set(NICHOS_VALIDOS)
 
@@ -88,7 +68,8 @@ function normalizar(titulo: string): string {
     .trim()
 }
 
-type Regra = { nicho: Nicho; re: RegExp }
+/** `nao`: se casar, a regra e pulada (o titulo segue para as proximas). */
+type Regra = { nicho: Nicho; re: RegExp; nao?: RegExp }
 
 /**
  * A ordem IMPORTA: a primeira regra que casa vence.
@@ -96,6 +77,25 @@ type Regra = { nicho: Nicho; re: RegExp }
  * exigem contexto pra nao roubar produto de outro nicho.
  */
 const REGRAS: Regra[] = [
+  // ── livros (termos fortes) ────────────────────────────────────────────────
+  // Antes de tudo: "Livro de Receitas Air Fryer" e livro, nao eletrodomestico;
+  // "Livro Skincare Coreano" e livro, nao beleza. Movel/luminaria de livro fica fora.
+  {
+    nicho: 'livros',
+    re: /\blivros?\b|\bbiblia\b|\bdevocional\b|capa dura|capa comum|\bbrochura\b|\bhardcover\b|\bpaperback\b|\beditora\b|\bkindle\b|\be-?book\b|\bgibis?\b|\bquadrinhos\b|\bmanga\b.*\bvol(ume)?\b|box (de |com )?\d+ livros|\bbest-?seller\b|\bliteratura\b/,
+    nao: /(estante|prateleira|suporte|porta|apoio|organizador|luminaria|cabeceira|nicho|aparador) (de |para |p\/ )?livros?|livro(s)? (decorativo|falso|fake|caixa)|caixa livro|\bsapateira\b|\bmultiuso\b/,
+  },
+
+  // ── brinquedos (termos fortes) ────────────────────────────────────────────
+  // Antes de beleza/casa ("Boneca com cabelos longos" nao e beleza), mas NAO
+  // rouba de bebes nem de pet: se o titulo fala de bebe/berco/mordedor ou de
+  // cachorro/gato, pula esta regra e cai em `bebes`/`pet_shop` mais abaixo.
+  {
+    nicho: 'brinquedos',
+    re: /\bbrinquedos?\b|\blego\b|\bbonec[oa]s?\b|\bbarbie\b|hot ?wheels|\bnerf\b|\bplaymobil\b|\bfunko\b|action figure|quebra-?cabecas?|jogo de tabuleiro|jogos de tabuleiro|jogo da memoria|massinha|\bslime\b|\bpokemon\b cartas?|\bbeyblade\b/,
+    nao: /\bbebes?\b|recem-?nascido|\bberco\b|mordedor|chocalho|\bmaternidade\b|\bcesto\b|\bbau\b|sapateira|prateleira|organizador|\bcachorros?\b|\bgatos?\b|\bpet\b|\bcaes\b|\bcao\b/,
+  },
+
   // ── beleza ────────────────────────────────────────────────────────────────
   // Vem primeiro: "escova de cabelo" nao pode virar casa, "prancha de cabelo"
   // nao pode virar esportes, "creme facial" nao pode virar alimentos.
@@ -125,7 +125,7 @@ const REGRAS: Regra[] = [
   // ── bebes ─────────────────────────────────────────────────────────────────
   {
     nicho: 'bebes',
-    re: /fralda|carrinho de bebe|bebe conforto|berco|mamadeira|chupeta|babador|body (de |para )?bebe|roupa (de |para )?bebe|papinha|lenco umedecido|bolsa maternidade|cadeirinha (para|de) (carro|auto)|trocador|banheira (de |para )?bebe|termometro (de |para )?banho|chocalho/,
+    re: /fralda|carrinho de bebe|mordedor|bebe conforto|berco|mamadeira|chupeta|babador|body (de |para )?bebe|roupa (de |para )?bebe|papinha|lenco umedecido|bolsa maternidade|cadeirinha (para|de) (carro|auto)|trocador|banheira (de |para )?bebe|termometro (de |para )?banho|chocalho/,
   },
 
   // ── pet_shop ──────────────────────────────────────────────────────────────
@@ -185,7 +185,10 @@ const REGRAS: Regra[] = [
   // ── brinquedos ────────────────────────────────────────────────────────────
   {
     nicho: 'brinquedos',
-    re: /\blego\b|blocos de montar|boneca|boneco|hot ?wheels|\bnerf\b|quebra-?cabeca|\bpelucia\b|jogo de tabuleiro|\bslime\b|massinha de modelar|carrinho de brinquedo|pista de carrinho|\bpiscina de bolinha\b|\bfunko\b|action figure|patinete infantil|triciclo|escorregador infantil/,
+    // Depois de bebes/pet/calcados/casa-ambiguos: pelucia, carrinho e "infantil"
+    // so entram aqui se nada mais especifico casou antes.
+    re: /\blego\b|blocos de montar|boneca|boneco|hot ?wheels|\bnerf\b|quebra-?cabeca|\bpelucias?\b|jogo de tabuleiro|\bslime\b|massinha de modelar|carrinhos? (de )?(brinquedo|friccao|controle remoto|miniatura)|kit (com )?(\d+ )?carrinhos|pista (com |de )?carrinhos?|controle remoto infantil|\bpiscina de bolinha\b|\bfunko\b|action figure|patinete infantil|triciclo|escorregador infantil|(jogo|cozinha|cozinhinha|casinha|tenda|cabana|fantasia|mercadinho|maleta|mesinha) infantil|jogo educativo|brinquedo educativo|\bmontessori\b|\bpeteca\b|\bpiao\b|\bioio\b|\bdomino\b|(jogo|tabuleiro) de xadrez|\buno\b cartas|\btoys\b/,
+    nao: /\bcachorros?\b|\bgatos?\b|\bpet\b|\bcaes\b|\bcao\b/,
   },
 
   // ── musica ────────────────────────────────────────────────────────────────
@@ -197,7 +200,8 @@ const REGRAS: Regra[] = [
   // ── livros ────────────────────────────────────────────────────────────────
   {
     nicho: 'livros',
-    re: /\blivro\b|\blivros\b|\bbox de livros\b|\bmanga\b volume|\bhq\b|gibi|\bbiblia\b|dicionario|\bebook\b|\bkindle\b|colecao literaria|box (da |de )?colecao|\bromance\b|\bapostila\b/,
+    // Termos mais fracos (os fortes estao na regra do topo).
+    re: /\bbox de livros\b|\bmanga\b volume|dicionario|colecao (literaria|completa de livros)|box (da |de )?colecao|box (trilogia|saga|completo)|\bromance\b|\bapostila\b|edicao (de luxo|definitiva|comemorativa|economica|bilingue|capa dura|ilustrada)|\bautora?\b|\bvolume unico\b/,
   },
 
   // ── alimentos ─────────────────────────────────────────────────────────────
@@ -227,7 +231,7 @@ const REGRAS: Regra[] = [
   // ── casa_moveis ───────────────────────────────────────────────────────────
   {
     nicho: 'casa_moveis',
-    re: /\bsofa\b|\bcolchao\b|\barmario\b|\bguarda-?roupa\b|\bracks?\b|\bestante\b|\bmesa (de jantar|de centro|lateral|dobravel|gamer)\b|\bcadeira (de escritorio|de jantar|giratoria)\b|\bpuff\b|\bcabeceira\b|\bcriado-?mudo\b|\bluminaria\b|\bcortina\b|\btapete\b|\borganizador\b|jogo de cama|\btravesseiro\b|\bedredom\b|\bcobertor\b|\blencol\b|\bmanta\b|\btoalha de (banho|rosto|mesa)\b|\bpanela\b|\bjogo de panelas\b|\bfaqueiro\b|\btalher\b|\bcopos?\b de vidro|\bpotes hermeticos\b|\bvaral\b|\bcesto de roupa\b|\bespelho decorativo\b|\bquadro decorativo\b|\bvaso decorativo\b|\bpapel de parede\b/,
+    re: /\bsofa\b|\bcolchao\b|\barmario\b|\bguarda-?roupa\b|\bracks?\b|\bestante\b|\bmesa (de jantar|de centro|lateral|dobravel|gamer)\b|\bcadeira (de escritorio|de jantar|giratoria)\b|\bpuff\b|\bcabeceira\b|\bcriado-?mudo\b|\bluminaria\b|\bcortina\b|\btapete\b|\borganizador\b|jogo de cama|\btravesseiro\b|\bedredom\b|\bcobertor\b|\blencol\b|\bmanta\b|\btoalha de (banho|rosto|mesa)\b|\bpanela\b|\bjogo de panelas\b|\bfaqueiro\b|\btalher\b|\bcopos?\b de vidro|\bpotes hermeticos\b|\bvaral\b|carrinho de (feira|compras)|\bcesto de roupa\b|\bespelho decorativo\b|\bquadro decorativo\b|\bvaso decorativo\b|\bpapel de parede\b/,
   },
 
   // ── moda ──────────────────────────────────────────────────────────────────
@@ -245,7 +249,8 @@ const REGRAS: Regra[] = [
 export function detectarNichoRegex(titulo: string): Nicho | null {
   const t = normalizar(titulo)
   if (t.length < 3) return null
-  for (const { nicho, re } of REGRAS) {
+  for (const { nicho, re, nao } of REGRAS) {
+    if (nao && nao.test(t)) continue
     if (re.test(t)) return nicho
   }
   return null
