@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 const navItems = [
   { label: 'Dashboard', href: '/admin', icon: '📊' },
   { label: 'Central de Ofertas', href: '/admin/central', icon: '🎯' },
+  { label: 'Aprovar ofertas', href: '/admin/aprovar', icon: '✅' },
   { label: 'Garimpados', href: '/admin/garimpados', icon: '🕵️' },
   { label: 'Produtos', href: '/admin/produtos', icon: '🏷️' },
   { label: 'Ofertas', href: '/admin/ofertas', icon: '📤' },
@@ -41,6 +42,7 @@ export default function AdminSidebar() {
 
   const handleLogout = () => {
     localStorage.removeItem('admin_authenticated')
+    fetch('/api/auth/login', { method: 'DELETE' }).catch(() => {})
     router.push('/login')
   }
 

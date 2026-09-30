@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendTelegram, sendWhatsApp, gerarAbertura } from '@/lib/dispatcher'
+import { dispararAprovados } from '@/lib/disparo-aprovados'
 
-const TODOS_NICHOS = [
-  'eletronicos', 'informatica', 'eletrodomesticos', 'games',
-  'moda', 'moda_masc', 'beleza', 'casa', 'esportes', 'bebes', 'pet', 'ferramentas',
-  'audio_video', 'cameras', 'calcados', 'casa_moveis', 'brinquedos',
-  'veiculos_acess', 'livros', 'saude', 'alimentos', 'musica', 'pet_shop',
-  'joias', 'relogios',
-]
+// 30/09/2026 — a pedido da Camilla o disparo deixou de ser automatico:
+// este cron so envia produtos APROVADOS na tela /admin/aprovar (ver
+// lib/disparo-aprovados.ts). Nao existe modo "automatico" — sem aprovacao,
+// nada sai. score_minimo/desconto_minimo/ultimo_nicho_idx ficam na config
+// por compatibilidade com a tela /admin/disparos, mas nao filtram mais nada.
 
 interface DisparoConfig {
   score_minimo: number
@@ -59,144 +57,6 @@ async function saveConfig(config: Partial<DisparoConfig>) {
       credenciais: { ...current, ...config },
       ativo: config.ativo ?? current.ativo,
     }, { onConflict: 'plataforma' })
-}
-
-function normalizarTitulo(titulo: string): string {
-  return titulo
-    .toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .replace(/[^a-z0-9\s]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function extrairPalavrasChave(titulo: string): Set<string> {
-  const stopWords = new Set(['de', 'do', 'da', 'dos', 'das', 'com', 'para', 'por', 'em', 'e', 'a', 'o', 'um', 'uma', 'no', 'na', 'ao', 'os', 'as'])
-  return new Set(
-    normalizarTitulo(titulo)
-      .split(' ')
-      .filter(w => w.length > 2 && !stopWords.has(w))
-  )
-}
-
-function titulosSimilares(t1: string, t2: string): boolean {
-  const palavras1 = extrairPalavrasChave(t1)
-  const palavras2 = extrairPalavrasChave(t2)
-  if (palavras1.size === 0 || palavras2.size === 0) return false
-  let intersecao = 0
-  for (const w of palavras1) {
-    if (palavras2.has(w)) intersecao++
-  }
-  const menor = Math.min(palavras1.size, palavras2.size)
-  return intersecao / menor >= 0.6
-}
-
-function produtoSimilarExiste(titulo: string, preco: number, lista: Array<{ titulo: string; preco: number }>): boolean {
-  for (const item of lista) {
-    if (titulosSimilares(titulo, item.titulo)) return true
-  }
-  return false
-}
-
-interface DisparadoInfo { titulo: string; preco: number }
-
-async function getJaDisparados(): Promise<{ ids: Set<string>; titulos: Set<string>; produtos: DisparadoInfo[] }> {
-  const limite = new Date()
-  limite.setHours(limite.getHours() - 48)
-  const limiteISO = limite.toISOString()
-
-  const { data } = await supabaseAdmin
-    .from('produtos')
-    .select('id, titulo, preco')
-    .eq('ativo', true)
-    .not('ultimo_disparo_em', 'is', null)
-    .gte('ultimo_disparo_em', limiteISO)
-
-  if (!data?.length) return { ids: new Set(), titulos: new Set(), produtos: [] }
-
-  const ids = new Set(data.map(d => d.id))
-  const titulos = new Set(
-    data.map(d => (d.titulo || '').toLowerCase().trim()).filter(Boolean)
-  )
-  const produtos: DisparadoInfo[] = data.map(d => ({
-    titulo: d.titulo || '',
-    preco: d.preco || 0,
-  }))
-  return { ids, titulos, produtos }
-}
-
-async function marcarProdutosDisparados(ids: string[]) {
-  if (!ids.length) return
-  await supabaseAdmin
-    .from('produtos')
-    .update({ ultimo_disparo_em: new Date().toISOString() })
-    .in('id', ids)
-}
-
-async function buscarProdutos(
-  nichoIdx: number,
-  config: DisparoConfig,
-  quantidade: number,
-  idsJaDisparados: Set<string>,
-  titulosJaDisparados: Set<string>,
-  produtosJaDisparados: DisparadoInfo[]
-): Promise<{ produtos: any[]; nichosUsados: string[]; ultimoNichoIdx: number }> {
-  const produtos: any[] = []
-  const nichosUsados: string[] = []
-  let idx = nichoIdx
-
-  const todosDisparados = [...produtosJaDisparados]
-  const limite48h = new Date()
-  limite48h.setHours(limite48h.getHours() - 48)
-  const limiteISO = limite48h.toISOString()
-
-  for (let tentativa = 0; tentativa < TODOS_NICHOS.length * 2 && produtos.length < quantidade; tentativa++) {
-    const nicho = TODOS_NICHOS[idx % TODOS_NICHOS.length]
-
-    for (const plataforma of ['mercadolivre', 'shopee', 'amazon', 'aliexpress'] as const) {
-      if (produtos.length >= quantidade) break
-
-      let query = supabaseAdmin
-        .from('produtos')
-        .select('*')
-        .eq('ativo', true)
-        .eq('plataforma', plataforma)
-        .eq('nicho', nicho)
-        .or(`ultimo_disparo_em.is.null,ultimo_disparo_em.lt.${limiteISO}`)
-        .limit(20)
-
-      if (plataforma === 'shopee') {
-        query = query.gte('score', config.score_minimo_shopee).order('score', { ascending: false })
-      } else {
-        query = query.gte('desconto_percent', config.desconto_minimo_ml).order('desconto_percent', { ascending: false })
-      }
-
-      const { data: candidatos } = await query
-
-      if (candidatos?.length) {
-        const bloqueadas = config.palavras_bloqueadas?.map(w => w.toLowerCase()) || []
-        const disponiveis = candidatos.filter(p => {
-          const titulo = (p.titulo || '').toLowerCase().trim()
-          return !idsJaDisparados.has(p.id) &&
-            !produtos.some(pp => pp.id === p.id) &&
-            !titulosJaDisparados.has(titulo) &&
-            !bloqueadas.some(w => titulo.includes(w)) &&
-            !produtoSimilarExiste(p.titulo, p.preco, todosDisparados)
-        })
-        if (disponiveis.length > 0) {
-          produtos.push(disponiveis[0])
-          idsJaDisparados.add(disponiveis[0].id)
-          titulosJaDisparados.add((disponiveis[0].titulo || '').toLowerCase().trim())
-          todosDisparados.push({ titulo: disponiveis[0].titulo, preco: disponiveis[0].preco })
-          if (!nichosUsados.includes(nicho)) nichosUsados.push(nicho)
-        }
-      }
-    }
-
-    idx++
-  }
-
-  return { produtos, nichosUsados, ultimoNichoIdx: idx % TODOS_NICHOS.length }
 }
 
 function randomInt(min: number, max: number): number {
@@ -257,123 +117,20 @@ export async function POST(request: Request) {
   // Lock otimista: marca ultimo_disparo ANTES de processar pra evitar race condition
   await saveConfig({ ultimo_disparo: new Date().toISOString() })
 
-  const { data: grupos } = await supabaseAdmin
-    .from('grupos')
-    .select('*')
-    .eq('ativo', true)
-
-  if (!grupos?.length) {
-    return NextResponse.json({ skip: true, motivo: 'Nenhum grupo ativo cadastrado' })
-  }
-
-  const { ids: idsJaDisparados, titulos: titulosJaDisparados, produtos: produtosJaDisparados } = await getJaDisparados()
-  const nichoIdx = config.ultimo_nicho_idx % TODOS_NICHOS.length
   const qtdProdutos = randomInt(config.min_produtos, config.max_produtos)
-
-  const resultado = await buscarProdutos(nichoIdx, config, qtdProdutos, idsJaDisparados, titulosJaDisparados, produtosJaDisparados)
-
-  if (resultado.produtos.length === 0) {
-    await saveConfig({ ultimo_nicho_idx: (nichoIdx + 1) % TODOS_NICHOS.length })
-    return NextResponse.json({
-      skip: true,
-      motivo: `Nenhum produto disponível (ML desconto >= ${config.desconto_minimo_ml}%, Shopee score >= ${config.score_minimo_shopee})`,
-      ja_disparados_48h: idsJaDisparados.size,
-      titulos_bloqueados: titulosJaDisparados.size,
-    })
-  }
-
-  const { data: configs } = await supabaseAdmin
-    .from('config_plataformas')
-    .select('plataforma, credenciais')
-    .in('plataforma', ['telegram_bot', 'evolution_api'])
-
-  const telegramConfig = configs?.find(c => c.plataforma === 'telegram_bot')?.credenciais as any
-  const evolutionConfig = configs?.find(c => c.plataforma === 'evolution_api')?.credenciais as any
-
-  let totalEnviados = 0
-  let totalErros = 0
-  const registros: any[] = []
-  const produtosDisparados: { id: string; titulo: string; score: number; nicho: string }[] = []
-
-  for (const produtoFinal of resultado.produtos) {
-    const abertura = await gerarAbertura(produtoFinal)
-
-    for (const grupo of grupos) {
-      if (grupo.nichos?.length && !grupo.nichos.includes(produtoFinal.nicho)) continue
-
-      let status = 'enviado'
-      let erro = ''
-
-      if (grupo.canal === 'telegram') {
-        if (!telegramConfig?.bot_token) {
-          status = 'erro'
-          erro = 'Bot token não configurado'
-        } else {
-          const result = await sendTelegram(telegramConfig.bot_token, grupo.grupo_id, produtoFinal, abertura)
-          if (!result.ok) { status = 'erro'; erro = result.error || 'Erro desconhecido' }
-        }
-      } else if (grupo.canal === 'whatsapp') {
-        if (!evolutionConfig?.url || !evolutionConfig?.api_key || !evolutionConfig?.instance) {
-          status = 'erro'
-          erro = 'Evolution API não configurada'
-        } else {
-          const result = await sendWhatsApp(
-            evolutionConfig.url, evolutionConfig.api_key, evolutionConfig.instance,
-            grupo.grupo_id, produtoFinal, abertura
-          )
-          if (!result.ok) { status = 'erro'; erro = result.error || 'Erro desconhecido' }
-        }
-      }
-
-      if (status === 'enviado') totalEnviados++
-      else totalErros++
-
-      registros.push({
-        produto_id: produtoFinal.id,
-        canal: grupo.canal,
-        grupo_id: grupo.grupo_id,
-        grupo_nome: grupo.nome,
-        mensagem: abertura,
-        status,
-        erro: erro || null,
-        disparado_em: new Date().toISOString(),
-      })
-
-      await new Promise(r => setTimeout(r, 500))
-    }
-
-    produtosDisparados.push({
-      id: produtoFinal.id,
-      titulo: produtoFinal.titulo,
-      score: produtoFinal.score,
-      nicho: produtoFinal.nicho,
-    })
-
-    await new Promise(r => setTimeout(r, 1000))
-  }
-
-  if (registros.length > 0) {
-    await supabaseAdmin.from('disparos').insert(registros)
-  }
-
-  const idsEnviados = produtosDisparados.map(p => p.id)
-  await marcarProdutosDisparados(idsEnviados)
-
-  await saveConfig({
-    ultimo_nicho_idx: resultado.ultimoNichoIdx,
-    ultimo_disparo: new Date().toISOString(),
+  const resultado = await dispararAprovados({
+    limite: qtdProdutos,
+    palavrasBloqueadas: config.palavras_bloqueadas,
   })
+
+  await saveConfig({ ultimo_disparo: new Date().toISOString() })
 
   return NextResponse.json({
     ok: true,
+    modo: 'somente_aprovados',
     qtd_sorteada: qtdProdutos,
-    qtd_disparada: resultado.produtos.length,
-    produtos: produtosDisparados,
-    nichos_usados: resultado.nichosUsados,
-    enviados: totalEnviados,
-    erros: totalErros,
-    total_registros: registros.length,
-    proximo_nicho: TODOS_NICHOS[resultado.ultimoNichoIdx],
+    qtd_disparada: resultado.produtos.filter(p => p.grupos_ok > 0).length,
     hora_brt: `${hora}h`,
+    ...resultado,
   })
 }
