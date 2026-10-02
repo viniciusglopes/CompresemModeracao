@@ -25,37 +25,10 @@ import { type SupabaseClient } from '@supabase/supabase-js'
 import { NICHOS_VALIDOS, NICHO_LABEL, type Nicho } from '@/lib/nicho-lista'
 export { NICHOS_VALIDOS, NICHO_LABEL, type Nicho }
 
-const SET_NICHOS: ReadonlySet<string> = new Set(NICHOS_VALIDOS)
-
-export function isNichoValido(v: unknown): v is Nicho {
-  return typeof v === 'string' && SET_NICHOS.has(v)
-}
-
-/** Ids legados que rotas antigas gravavam e que NAO existem no cadastro de grupos. */
-export const NICHOS_LEGADOS: Record<string, Nicho> = {
-  casa: 'casa_moveis',
-  pet: 'pet_shop',
-  moda_masc: 'moda',
-  moda_fem: 'moda',
-  joias: 'moda',
-  relogios: 'moda',
-  acessorios: 'moda',
-  bolsas: 'moda',
-  lingerie: 'moda',
-  beleza_saude: 'beleza',
-  celulares: 'eletronicos',
-  perfumaria: 'beleza',
-  eletro: 'eletrodomesticos',
-  eletroportateis: 'eletrodomesticos',
-}
-
-/** Normaliza um nicho ja gravado: traduz legado, descarta desconhecido. */
-export function normalizarNicho(v: unknown): Nicho | null {
-  if (typeof v !== 'string') return null
-  const s = v.trim().toLowerCase()
-  if (SET_NICHOS.has(s)) return s as Nicho
-  return NICHOS_LEGADOS[s] ?? null
-}
+// isNichoValido / NICHOS_LEGADOS / normalizarNicho moram em nicho-lista.ts
+// (puros, testaveis sem banco) e sao reexportados aqui.
+import { isNichoValido, NICHOS_LEGADOS, normalizarNicho } from '@/lib/nicho-lista'
+export { isNichoValido, NICHOS_LEGADOS, normalizarNicho }
 
 // ─── Regex ────────────────────────────────────────────────────────────────────
 

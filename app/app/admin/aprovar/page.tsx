@@ -5,6 +5,7 @@ import { erroMsg } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { NICHOS_VALIDOS, NICHO_LABEL } from '@/lib/nicho-lista'
+import { useDisparoComEscolha } from '@/components/EscolherGrupos'
 
 type Situacao = 'pendente' | 'aprovado' | 'disparado' | 'rejeitado'
 
@@ -76,7 +77,6 @@ export default function AprovarPage() {
   const [origem, setOrigem] = useState('')
   const [nicho, setNicho] = useState('')
   const [ocupado, setOcupado] = useState<Set<string>>(new Set())
-  const [disparando, setDisparando] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   const avisar = (type: 'success' | 'error', text: string, ms = 5000) => {
@@ -168,34 +168,11 @@ export default function AprovarPage() {
   const aprovadosNaFila = itens.filter(i => i.situacao === 'aprovado').length
   const decidiveis = itens.filter(i => i.situacao === 'pendente' || i.situacao === 'aprovado')
 
-  const dispararAgora = async () => {
-    if (!confirm('Enviar agora para os grupos os produtos MARCADOS (até 20 por vez)?\n\nSó sai o que está marcado, cada um para o grupo da categoria dele.')) return
-    setDisparando(true)
-    try {
-      const res = await fetch('/api/aprovacao/disparar', { method: 'POST' })
-      if (res.status === 401) { setSemSessao(true); return }
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      const produtos = (data.produtos || []) as { grupos_ok: number; erro?: string }[]
-      const saiu = produtos.filter(p => p.grupos_ok > 0).length
-      const falhou = produtos.filter(p => p.grupos_ok === 0)
-      const pul = data.pulados || {}
-      const partes = [
-        `${saiu} produto(s) enviado(s) (${data.enviados} mensagens)`,
-        falhou.length ? `${falhou.length} falharam e continuam na fila${falhou[0]?.erro ? ` — ${falhou[0].erro}` : ''}` : '',
-        pul.sem_grupo ? `${pul.sem_grupo} sem grupo da categoria` : '',
-        pul.anti_repost_48h ? `${pul.anti_repost_48h} já saíram nas últimas 48h` : '',
-        pul.similar_48h ? `${pul.similar_48h} parecidos com algo recente` : '',
-        !saiu && data.motivo ? data.motivo : '',
-      ].filter(Boolean)
-      avisar(falhou.length || !saiu ? 'error' : 'success', partes.join(' · '), 10000)
-      await carregar()
-    } catch (e: unknown) {
-      avisar('error', erroMsg(e))
-    } finally {
-      setDisparando(false)
-    }
-  }
+  // 2 passos: o servidor diz quais marcados sairiam (ate 20, ja com anti-repost)
+  // e os grupos pre-marcados pela categoria; a pessoa confirma/ajusta e envia.
+  const disparo = useDisparoComEscolha('/api/aprovacao/disparar', () => { carregar() })
+  const disparando = disparo.preparando || disparo.enviando
+  const dispararAgora = () => disparo.preparar({})
 
   if (semSessao) {
     return (
@@ -263,6 +240,9 @@ export default function AprovarPage() {
           </select>
         </div>
       </div>
+
+      {disparo.relatorio}
+      {disparo.modal}
 
       {msg && (
         <p className={`mb-3 text-sm p-3 rounded-lg ${

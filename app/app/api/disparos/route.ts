@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendTelegram, sendWhatsApp, gerarAbertura } from '@/lib/dispatcher'
+import { gerarAbertura } from '@/lib/dispatcher'
+import { MSG_SEM_GRUPO, escolhaExplicita, grupoGeral, resolverAlvos, type GrupoBase } from '@/lib/grupos-alvo'
+import { carregarCredenciais, enviarParaGrupo, type ProdutoMsg, type ResultadoGrupo } from '@/lib/envio-grupo'
 
 // GET — lista disparos com filtros opcionais
 export async function GET(request: Request) {
@@ -57,128 +59,153 @@ export async function DELETE(request: Request) {
   }
 }
 
-// POST — dispara produto(s) para grupos
+// POST — disparo MANUAL de produto(s) para grupos.
+//
+// Corpo:
+//   produto_ids: string[]                       (obrigatorio)
+//   grupos_por_produto?: { [produto_id]: string[] }  escolha por produto (tela)
+//   grupo_ids?: string[]                        escolha unica p/ todos
+//   dry?: boolean                               so calcula os alvos, NAO envia
+// Escolha explicita vence o filtro de categoria. Sem escolha: grupos compativeis
+// com a categoria (grupo sem categoria = geral; produto sem categoria so vai p/ geral).
+// 0 alvos => 400 com MSG_SEM_GRUPO. 0 enviados => 502. Nunca "sucesso" sem envio.
+const CAMPOS_PRODUTO = 'id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, nicho, frete_gratis, loja_nome'
+
+interface ProdutoDisparo {
+  id: string
+  titulo: string | null
+  nicho: string | null
+  fonte: 'produto' | 'garimpado'
+  [k: string]: unknown
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { produto_ids, grupo_ids } = body
-    // grupo_ids opcional: se não passado, envia para todos os grupos ativos
+    const produto_ids: unknown = body?.produto_ids
+    const dry = body?.dry === true
 
-    if (!produto_ids?.length) {
+    if (!Array.isArray(produto_ids) || !produto_ids.length) {
       return NextResponse.json({ error: 'produto_ids é obrigatório' }, { status: 400 })
     }
 
     // Busca produtos de ambas as tabelas (produtos + garimpados)
     const { data: produtosApi, error: prodErr } = await supabaseAdmin
       .from('produtos')
-      .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, nicho, frete_gratis, loja_nome')
+      .select(CAMPOS_PRODUTO)
       .in('id', produto_ids)
-
     if (prodErr) return NextResponse.json({ error: prodErr.message }, { status: 500 })
 
-    const idsEncontrados = new Set((produtosApi || []).map((p: any) => p.id))
+    const idsEncontrados = new Set((produtosApi || []).map(p => p.id))
     const idsFaltantes = produto_ids.filter((id: string) => !idsEncontrados.has(id))
 
-    let produtosGarimp: any[] = []
+    let produtosGarimp: ProdutoDisparo[] = []
     if (idsFaltantes.length > 0) {
       const { data: garimps } = await supabaseAdmin
         .from('produtos_garimpados')
         .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, cupom')
         .in('id', idsFaltantes)
-
-      produtosGarimp = (garimps || []).map((g: any) => ({
-        ...g,
-        nicho: null,
-        frete_gratis: false,
-        loja_nome: null,
+      produtosGarimp = (garimps || []).map(g => ({
+        ...g, nicho: null, frete_gratis: false, loja_nome: null, fonte: 'garimpado' as const,
       }))
     }
 
-    const produtos = [...(produtosApi || []), ...produtosGarimp]
+    const produtos: ProdutoDisparo[] = [
+      ...(produtosApi || []).map(p => ({ ...p, fonte: 'produto' as const })),
+      ...produtosGarimp,
+    ]
     if (!produtos.length) return NextResponse.json({ error: 'Nenhum produto encontrado' }, { status: 404 })
 
-    // Busca grupos ativos
-    let gruposQuery = supabaseAdmin.from('grupos').select('*').eq('ativo', true)
-    if (grupo_ids?.length) gruposQuery = gruposQuery.in('id', grupo_ids)
-    const { data: grupos, error: grupoErr } = await gruposQuery
+    const { data: gruposData, error: grupoErr } = await supabaseAdmin
+      .from('grupos')
+      .select('id, nome, canal, grupo_id, nichos')
+      .eq('ativo', true)
+      .order('created_at', { ascending: true })
     if (grupoErr) return NextResponse.json({ error: grupoErr.message }, { status: 500 })
-    if (!grupos?.length) return NextResponse.json({ error: 'Nenhum grupo ativo configurado' }, { status: 400 })
+    const grupos = (gruposData || []) as GrupoBase[]
+    const gruposResp = grupos.map(g => ({ id: g.id, nome: g.nome, canal: g.canal, nichos: g.nichos, geral: grupoGeral(g) }))
 
-    // Busca config de credenciais
-    const { data: configs } = await supabaseAdmin
-      .from('config_plataformas')
-      .select('plataforma, credenciais')
-      .in('plataforma', ['telegram_bot', 'evolution_api'])
+    const plano = produtos.map(p => ({
+      produto: p,
+      alvos: resolverAlvos(grupos, p.nicho, escolhaExplicita(p.id, body)),
+    }))
+    const totalAlvos = plano.reduce((s, x) => s + x.alvos.length, 0)
+    const produtosResp = plano.map(({ produto, alvos }) => ({
+      id: produto.id,
+      titulo: produto.titulo,
+      nicho: produto.nicho,
+      fonte: produto.fonte,
+      alvos: alvos.map(g => ({ grupo: g.id, grupo_nome: g.nome, canal: g.canal })),
+      sem_grupo: alvos.length === 0,
+    }))
 
-    const telegramConfig = configs?.find(c => c.plataforma === 'telegram_bot')?.credenciais as any
-    const evolutionConfig = configs?.find(c => c.plataforma === 'evolution_api')?.credenciais as any
+    if (dry) {
+      return NextResponse.json({ ok: true, dry: true, grupos: gruposResp, produtos: produtosResp, total_alvos: totalAlvos })
+    }
 
-    const registros: any[] = []
+    if (!grupos.length) return NextResponse.json({ error: 'Nenhum grupo ativo configurado', grupos: gruposResp }, { status: 400 })
+    if (totalAlvos === 0) {
+      return NextResponse.json({ error: MSG_SEM_GRUPO, grupos: gruposResp, produtos: produtosResp, enviados: 0, erros: 0, total: 0 }, { status: 400 })
+    }
+
+    const cred = await carregarCredenciais()
+    const registros: Record<string, unknown>[] = []
+    const resultadosPorProduto: Record<string, ResultadoGrupo[]> = {}
+    const enviadosProdutos: string[] = []
     let totalEnviados = 0
     let totalErros = 0
 
-    for (const produto of produtos) {
-      // Chama Gemini UMA vez por produto — reutiliza para todas as plataformas
-      const abertura = await gerarAbertura(produto)
-      console.log(`[Disparo] produto=${produto.id} abertura="${abertura}"`)
+    for (const { produto, alvos } of plano) {
+      resultadosPorProduto[produto.id] = []
+      if (!alvos.length) continue
+      const msg = produto as unknown as ProdutoMsg
+      // Chama Gemini UMA vez por produto — reutiliza para todos os grupos
+      const abertura = await gerarAbertura(msg)
 
-      for (const grupo of grupos) {
-        // Verifica filtro de nicho do grupo
-        if (grupo.nichos?.length && !grupo.nichos.includes(produto.nicho)) continue
-
-        let status = 'enviado'
-        let erro = ''
-
-        if (grupo.canal === 'telegram') {
-          if (!telegramConfig?.bot_token) {
-            status = 'erro'
-            erro = 'Bot token do Telegram não configurado'
-          } else {
-            const result = await sendTelegram(telegramConfig.bot_token, grupo.grupo_id, produto, abertura)
-            if (!result.ok) { status = 'erro'; erro = result.error || 'Erro desconhecido' }
-          }
-        } else if (grupo.canal === 'whatsapp') {
-          if (!evolutionConfig?.url || !evolutionConfig?.api_key || !evolutionConfig?.instance) {
-            status = 'erro'
-            erro = 'Evolution API não configurada'
-          } else {
-            const result = await sendWhatsApp(
-              evolutionConfig.url,
-              evolutionConfig.api_key,
-              evolutionConfig.instance,
-              grupo.grupo_id,
-              produto,
-              abertura
-            )
-            if (!result.ok) { status = 'erro'; erro = result.error || 'Erro desconhecido' }
-          }
-        }
-
-        if (status === 'enviado') totalEnviados++
+      for (const grupo of alvos) {
+        const r = await enviarParaGrupo(grupo, msg, abertura, cred)
+        resultadosPorProduto[produto.id].push(r)
+        if (r.status === 'enviado') totalEnviados++
         else totalErros++
-
         registros.push({
           produto_id: produto.id,
           canal: grupo.canal,
           grupo_id: grupo.grupo_id,
           grupo_nome: grupo.nome,
-          mensagem: '',
-          status,
-          erro: erro || null,
+          mensagem: abertura,
+          status: r.status,
+          erro: r.erro || null,
           disparado_em: new Date().toISOString(),
         })
-
-        // Pequena pausa entre envios para evitar rate limit
-        await new Promise(r => setTimeout(r, 300))
+        await new Promise(res => setTimeout(res, 300))
+      }
+      if (produto.fonte === 'produto' && resultadosPorProduto[produto.id].some(r => r.status === 'enviado')) {
+        enviadosProdutos.push(produto.id)
       }
     }
 
     if (registros.length > 0) {
-      await supabaseAdmin.from('disparos').insert(registros)
+      const { error: insErr } = await supabaseAdmin.from('disparos').insert(registros)
+      if (insErr) console.error('[Disparo manual] falha ao gravar disparos:', insErr.message)
+    }
+    // Alimenta o anti-repost de 48h do disparo dos aprovados.
+    if (enviadosProdutos.length) {
+      await supabaseAdmin.from('produtos').update({ ultimo_disparo_em: new Date().toISOString() }).in('id', enviadosProdutos)
     }
 
-    return NextResponse.json({ ok: true, enviados: totalEnviados, erros: totalErros, total: registros.length })
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    const resposta = {
+      ok: totalEnviados > 0,
+      enviados: totalEnviados,
+      erros: totalErros,
+      total: registros.length,
+      grupos: gruposResp,
+      produtos: produtosResp.map(p => ({ ...p, resultados: resultadosPorProduto[p.id] || [] })),
+    }
+    if (totalEnviados === 0) {
+      return NextResponse.json({ ...resposta, error: 'Nada foi enviado — todos os envios falharam (veja o erro de cada grupo)' }, { status: 502 })
+    }
+    return NextResponse.json(resposta)
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 500 })
   }
 }

@@ -7,15 +7,20 @@
 //  - anti-repost mantido: nada que saiu nas ultimas 48h, nem titulo >=60%
 //    parecido com algo que saiu nas ultimas 48h, nem palavra bloqueada;
 //  - produto vai so para os grupos da categoria dele (grupo sem categoria
-//    recebe tudo). Sem grupo da categoria -> fica na fila, nao e marcado;
+//    recebe tudo; produto sem categoria so vai para grupo sem categoria).
+//    Sem grupo da categoria -> fica na fila, nao e marcado;
+//  - tela /admin/aprovar: primeiro chama com `dry` (mostra os grupos pre-marcados),
+//    depois manda `gruposPorProduto` com a escolha da pessoa. Escolha explicita
+//    vence a categoria; produto que nao estava na escolha NAO sai;
 //  - cada produto e "reservado" no banco antes de enviar (UPDATE condicional),
 //    entao dois disparos ao mesmo tempo nao mandam o mesmo produto duas vezes;
 //  - se TODOS os envios de um produto falharem, a reserva e desfeita e ele
 //    continua na fila.
 
 import { supabaseAdmin } from '@/lib/supabase'
-import { sendTelegram, sendWhatsApp, gerarAbertura } from '@/lib/dispatcher'
-import { normalizarNicho } from '@/lib/nicho'
+import { gerarAbertura } from '@/lib/dispatcher'
+import { MSG_SEM_GRUPO, escolhaExplicita, grupoGeral, resolverAlvos, type GrupoBase } from '@/lib/grupos-alvo'
+import { carregarCredenciais, enviarParaGrupo, type ProdutoMsg, type ResultadoGrupo } from '@/lib/envio-grupo'
 
 const JANELA_ANTI_REPOST_H = 48
 
@@ -43,19 +48,25 @@ export function titulosSimilares(t1: string, t2: string): boolean {
   return inter / Math.min(a.size, b.size) >= 0.6
 }
 
-type ProdutoMsg = Parameters<typeof gerarAbertura>[0]
+interface Grupo extends GrupoBase { ativo: boolean }
 
-interface Grupo { id: string; nome: string; canal: string; grupo_id: string; nichos: string[] | null; ativo: boolean }
-
-function gruposDoProduto(grupos: Grupo[], nicho: string | null): Grupo[] {
-  const n = normalizarNicho(nicho)
-  return grupos.filter(g => !g.nichos?.length || (n !== null && g.nichos.includes(n)))
+export interface ProdutoResumo {
+  id: string
+  titulo: string
+  nicho: string | null
+  grupos_ok: number
+  grupos_erro: number
+  erro?: string
+  alvos: { grupo: string; grupo_nome: string; canal: string }[]
+  resultados: ResultadoGrupo[]
 }
 
 export interface ResumoDisparo {
   enviados: number
   erros: number
-  produtos: { id: string; titulo: string; nicho: string | null; grupos_ok: number; grupos_erro: number; erro?: string }[]
+  produtos: ProdutoResumo[]
+  grupos: { id: string; nome: string; canal: string; nichos: unknown; geral: boolean }[]
+  dry?: boolean
   na_fila: number
   pulados: { anti_repost_48h: number; similar_48h: number; palavra_bloqueada: number; sem_grupo: number }
   motivo?: string
@@ -64,15 +75,22 @@ export interface ResumoDisparo {
 export async function dispararAprovados(opts: {
   limite: number
   palavrasBloqueadas?: string[]
+  /** So calcula quem sairia e para quais grupos; nao reserva nem envia. */
+  dry?: boolean
+  /** Escolha da tela: produto_id -> ids de `grupos`. Definido => so esses produtos saem. */
+  gruposPorProduto?: Record<string, string[]>
 }): Promise<ResumoDisparo> {
   const resumo: ResumoDisparo = {
-    enviados: 0, erros: 0, produtos: [], na_fila: 0,
+    enviados: 0, erros: 0, produtos: [], grupos: [], na_fila: 0, ...(opts.dry ? { dry: true } : {}),
     pulados: { anti_repost_48h: 0, similar_48h: 0, palavra_bloqueada: 0, sem_grupo: 0 },
   }
 
   const { data: gruposData } = await supabaseAdmin.from('grupos').select('*').eq('ativo', true)
   const grupos = (gruposData || []) as Grupo[]
+  resumo.grupos = grupos.map(g => ({ id: g.id, nome: g.nome, canal: g.canal, nichos: g.nichos, geral: grupoGeral(g) }))
   if (!grupos.length) return { ...resumo, motivo: 'Nenhum grupo ativo cadastrado' }
+  const escolha = opts.gruposPorProduto ? { grupos_por_produto: opts.gruposPorProduto } : {}
+  const alvosDe = (p: { id: string; nicho: string | null }) => resolverAlvos(grupos, p.nicho, escolhaExplicita(p.id, escolha))
 
   const { data: aprovados, error } = await supabaseAdmin
     .from('produtos')
@@ -103,24 +121,34 @@ export async function dispararAprovados(opts: {
   const escolhidos: typeof naFila = []
   for (const p of naFila) {
     if (escolhidos.length >= opts.limite) break
+    // Com escolha da tela, so sai o que a pessoa viu e confirmou.
+    if (opts.gruposPorProduto && !(p.id in opts.gruposPorProduto)) continue
     const titulo = (p.titulo || '').toLowerCase()
     if (p.ultimo_disparo_em && new Date(p.ultimo_disparo_em).getTime() > limite48) { resumo.pulados.anti_repost_48h++; continue }
     if (bloqueadas.some(w => titulo.includes(w))) { resumo.pulados.palavra_bloqueada++; continue }
-    if (!gruposDoProduto(grupos, p.nicho).length) { resumo.pulados.sem_grupo++; continue }
+    // No dry o produto sem grupo compativel APARECE (para a pessoa escolher o grupo).
+    if (!opts.dry && !alvosDe(p).length) { resumo.pulados.sem_grupo++; continue }
     if (titulosRecentes.some(t => titulosSimilares(p.titulo || '', t)) ||
         escolhidos.some(e => titulosSimilares(p.titulo || '', e.titulo || ''))) { resumo.pulados.similar_48h++; continue }
     escolhidos.push(p)
   }
-  if (!escolhidos.length) return { ...resumo, motivo: 'Aprovados na fila, mas todos barrados pelas regras (ver "pulados")' }
+  if (!escolhidos.length) {
+    const soSemGrupo = resumo.pulados.sem_grupo > 0 &&
+      resumo.pulados.sem_grupo === resumo.pulados.anti_repost_48h + resumo.pulados.palavra_bloqueada + resumo.pulados.similar_48h + resumo.pulados.sem_grupo
+    return { ...resumo, motivo: soSemGrupo ? MSG_SEM_GRUPO : 'Aprovados na fila, mas todos barrados pelas regras (ver "pulados")' }
+  }
 
-  const { data: configs } = await supabaseAdmin
-    .from('config_plataformas')
-    .select('plataforma, credenciais')
-    .in('plataforma', ['telegram_bot', 'evolution_api'])
-  const telegramConfig = configs?.find(c => c.plataforma === 'telegram_bot')?.credenciais as
-    { bot_token?: string } | null | undefined
-  const evolutionConfig = configs?.find(c => c.plataforma === 'evolution_api')?.credenciais as
-    { url?: string; api_key?: string; instance?: string } | null | undefined
+  const vazio = (p: { id: string; titulo: string; nicho: string | null }, alvos: GrupoBase[]): ProdutoResumo => ({
+    id: p.id, titulo: p.titulo, nicho: p.nicho, grupos_ok: 0, grupos_erro: 0,
+    alvos: alvos.map(g => ({ grupo: g.id, grupo_nome: g.nome, canal: g.canal })), resultados: [],
+  })
+
+  if (opts.dry) {
+    resumo.produtos = escolhidos.map(p => vazio(p, alvosDe(p)))
+    return resumo
+  }
+
+  const cred = await carregarCredenciais()
 
   const registros: {
     produto_id: string; canal: string; grupo_id: string; grupo_nome: string
@@ -142,39 +170,26 @@ export async function dispararAprovados(opts: {
     const { data: reservado } = await reserva.select('id')
     if (!reservado?.length) continue
 
-    const alvo = gruposDoProduto(grupos, p.nicho)
+    const alvo = alvosDe(p)
     const produto = p as unknown as ProdutoMsg
+    const item = vazio(p, alvo)
     const abertura = await gerarAbertura(produto)
     let ok = 0
     let falhas = 0
     let ultimoErro = ''
 
     for (const grupo of alvo) {
-      let status = 'enviado'
-      let erro = ''
-      if (grupo.canal === 'telegram') {
-        if (!telegramConfig?.bot_token) { status = 'erro'; erro = 'Bot token não configurado' }
-        else {
-          const r = await sendTelegram(telegramConfig.bot_token, grupo.grupo_id, produto, abertura)
-          if (!r.ok) { status = 'erro'; erro = r.error || 'Erro desconhecido' }
-        }
-      } else if (grupo.canal === 'whatsapp') {
-        if (!evolutionConfig?.url || !evolutionConfig?.api_key || !evolutionConfig?.instance) {
-          status = 'erro'; erro = 'Evolution API não configurada'
-        } else {
-          const r = await sendWhatsApp(evolutionConfig.url, evolutionConfig.api_key, evolutionConfig.instance, grupo.grupo_id, produto, abertura)
-          if (!r.ok) { status = 'erro'; erro = r.error || 'Erro desconhecido' }
-        }
-      }
-      if (status === 'enviado') { ok++; resumo.enviados++ } else { falhas++; resumo.erros++; ultimoErro = erro }
+      const r = await enviarParaGrupo(grupo, produto, abertura, cred)
+      item.resultados.push(r)
+      if (r.status === 'enviado') { ok++; resumo.enviados++ } else { falhas++; resumo.erros++; ultimoErro = r.erro || '' }
       registros.push({
         produto_id: p.id,
         canal: grupo.canal,
         grupo_id: grupo.grupo_id,
         grupo_nome: grupo.nome,
         mensagem: abertura,
-        status,
-        erro: erro || null,
+        status: r.status,
+        erro: r.erro || null,
         disparado_em: new Date().toISOString(),
       })
       await new Promise(r => setTimeout(r, 500))
@@ -190,8 +205,9 @@ export async function dispararAprovados(opts: {
     }
 
     resumo.produtos.push({
-      id: p.id, titulo: p.titulo, nicho: p.nicho, grupos_ok: ok, grupos_erro: falhas,
+      ...item, grupos_ok: ok, grupos_erro: falhas,
       ...(ok === 0 && ultimoErro ? { erro: ultimoErro.slice(0, 200) } : {}),
+      ...(alvo.length === 0 ? { erro: MSG_SEM_GRUPO } : {}),
     })
     await new Promise(r => setTimeout(r, 1000))
   }

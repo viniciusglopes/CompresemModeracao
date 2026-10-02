@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useDisparoComEscolha } from '@/components/EscolherGrupos'
 
 interface ProdutoUnificado {
   id: string
@@ -67,7 +68,6 @@ export default function CentralPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
-  const [enviando, setEnviando] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
@@ -147,47 +147,27 @@ export default function CentralPage() {
     setSelecionados(new Set(produtos.filter(p => p.status_disparo === 'pendente').map(p => p.id)))
   }
 
-  const handleDisparar = async () => {
-    if (selecionados.size === 0) return
-    setEnviando(true)
-    try {
-      const selected = produtos.filter(p => selecionados.has(p.id))
-      const apiIds = selected.filter(p => p.origem === 'api').map(p => p.id)
-      const garimpIds = selected.filter(p => p.origem === 'garimpado').map(p => p.id)
-
-      let totalEnviados = 0
-      let totalErros = 0
-
-      if (garimpIds.length > 0) {
-        await fetch('/api/garimpados', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: garimpIds, status: 'processado' }),
-        })
-      }
-
-      const allIds = [...apiIds, ...garimpIds]
-      if (allIds.length > 0) {
-        const res = await fetch('/api/disparos', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ produto_ids: allIds }),
-        })
-        const data = await res.json()
-        if (data.error) throw new Error(data.error)
-        totalEnviados = data.enviados || 0
-        totalErros = data.erros || 0
-      }
-
-      setMsg({ type: 'success', text: `${totalEnviados} enviado(s)${totalErros > 0 ? `, ${totalErros} erro(s)` : ''}` })
-      setSelecionados(new Set())
-      loadDados()
-    } catch (e: any) {
-      setMsg({ type: 'error', text: e.message })
-    } finally {
-      setEnviando(false)
-      setTimeout(() => setMsg(null), 5000)
+  // Disparo manual em 2 passos: escolher os grupos (pre-marcados pela categoria)
+  // e so entao enviar. Mostra para onde cada produto foi ou o erro de cada grupo.
+  const disparo = useDisparoComEscolha('/api/disparos', async r => {
+    const garimpOk = r.produtos
+      .filter(p => p.resultados?.some(x => x.status === 'enviado'))
+      .map(p => p.id)
+      .filter(id => produtos.some(x => x.id === id && x.origem === 'garimpado'))
+    if (garimpOk.length) {
+      await fetch('/api/garimpados', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: garimpOk, status: 'processado' }),
+      })
     }
+    if (r.enviados > 0) setSelecionados(new Set())
+    loadDados()
+  })
+
+  const handleDisparar = () => {
+    if (selecionados.size === 0) return
+    disparo.preparar({ produto_ids: Array.from(selecionados) })
   }
 
   const handleAprovarGarimpados = async () => {
@@ -351,6 +331,9 @@ export default function CentralPage() {
           ))}
         </div>
       )}
+
+      {disparo.relatorio}
+      {disparo.modal}
 
       {msg && (
         <div className={`mb-4 p-3 rounded-lg text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
@@ -696,9 +679,9 @@ export default function CentralPage() {
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 z-50 flex-wrap max-w-[95vw]">
           <span className="text-sm font-medium">{selecionados.size} selecionado(s)</span>
 
-          <Button onClick={handleDisparar} disabled={enviando}
+          <Button onClick={handleDisparar} disabled={disparo.preparando || disparo.enviando}
             className="bg-green-500 hover:bg-green-400 text-white text-xs h-8 px-3">
-            {enviando ? '⏳' : '📤'} Disparar
+            {disparo.preparando || disparo.enviando ? '⏳' : '📤'} Disparar
           </Button>
 
           {temGarimpSelecionado && (

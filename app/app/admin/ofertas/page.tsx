@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { useDisparoComEscolha } from '@/components/EscolherGrupos'
 
 interface Produto {
   id: string
@@ -44,7 +45,6 @@ export default function OfertasPage() {
   const [nichos, setNichos] = useState<Nicho[]>([])
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
-  const [enviando, setEnviando] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
   const [msg, setMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
@@ -145,30 +145,17 @@ export default function OfertasPage() {
     setSelecionados(new Set(produtos.filter(p => !produtosEnviados.has(p.id)).map(p => p.id)))
   }
 
-  const handleEnviar = async () => {
+  // ATENCAO: isto ENVIA de verdade para os grupos (nao e so "marcar").
+  // 2 passos: escolher os grupos e depois enviar; mostra o resultado por grupo.
+  const disparo = useDisparoComEscolha('/api/disparos', r => {
+    if (r.enviados > 0) setSelecionados(new Set())
+    loadDados()
+  })
+  const enviando = disparo.preparando || disparo.enviando
+
+  const handleEnviar = () => {
     if (selecionados.size === 0) return
-    setEnviando(true)
-    try {
-      const res = await fetch('/api/disparos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          produto_ids: Array.from(selecionados),
-          canal: 'telegram',
-          grupo_nome: 'Manual',
-        }),
-      })
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      setMsg({ type: 'success', text: `${data.enviados} produtos marcados como enviados!` })
-      setSelecionados(new Set())
-      loadDados()
-    } catch (e: any) {
-      setMsg({ type: 'error', text: e.message })
-    } finally {
-      setEnviando(false)
-      setTimeout(() => setMsg(null), 5000)
-    }
+    disparo.preparar({ produto_ids: Array.from(selecionados) })
   }
 
   const handleExcluir = async (e: React.MouseEvent, id: string, titulo: string) => {
@@ -256,11 +243,14 @@ export default function OfertasPage() {
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium text-rose-600">{selecionados.size} selecionados</span>
             <Button onClick={handleEnviar} disabled={enviando} className="bg-green-600 hover:bg-green-700">
-              {enviando ? '⏳ Enviando...' : `📤 Marcar ${selecionados.size} como enviado`}
+              {enviando ? '⏳ Enviando...' : `📤 Disparar ${selecionados.size} para os grupos`}
             </Button>
           </div>
         )}
       </div>
+
+      {disparo.relatorio}
+      {disparo.modal}
 
       {msg && (
         <div className={`mb-4 p-3 rounded-lg text-sm ${msg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
