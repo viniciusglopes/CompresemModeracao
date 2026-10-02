@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase'
 import { gerarAbertura } from '@/lib/dispatcher'
+import { detectarNichoRegex, normalizarNicho } from '@/lib/nicho'
 import { MSG_SEM_GRUPO, escolhaExplicita, grupoGeral, resolverAlvos, type GrupoBase } from '@/lib/grupos-alvo'
 import { carregarCredenciais, enviarParaGrupo, type ProdutoMsg, type ResultadoGrupo } from '@/lib/envio-grupo'
 
@@ -103,10 +104,13 @@ export async function POST(request: Request) {
     if (idsFaltantes.length > 0) {
       const { data: garimps } = await supabaseAdmin
         .from('produtos_garimpados')
-        .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, cupom')
+        .select('id, titulo, preco, preco_original, desconto_percent, plataforma, link_afiliado, link_original, thumbnail, cupom, nicho')
         .in('id', idsFaltantes)
+      // Mesma regra da tela /admin/aprovar: categoria salva, senao detectada pelo titulo.
       produtosGarimp = (garimps || []).map(g => ({
-        ...g, nicho: null, frete_gratis: false, loja_nome: null, fonte: 'garimpado' as const,
+        ...g,
+        nicho: normalizarNicho(g.nicho) ?? detectarNichoRegex(g.titulo || ''),
+        frete_gratis: false, loja_nome: null, fonte: 'garimpado' as const,
       }))
     }
 
