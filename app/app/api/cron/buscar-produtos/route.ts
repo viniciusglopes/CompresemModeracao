@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       try {
         const res = await fetch(`${BASE_URL}/api/busca/${plataforma}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-cron-secret': process.env.CRON_SECRET || '' },
           body: JSON.stringify({ nicho, limite: 15 }),
         })
         const data = await res.json()

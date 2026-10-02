@@ -9,9 +9,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter()
 
   useEffect(() => {
-    if (!localStorage.getItem('admin_authenticated')) {
-      router.push('/login')
-    }
+    // A sessao vale pelo cookie do servidor, nao pelo localStorage
+    // (todas as rotas /api exigem o cookie desde 01/10/2026).
+    fetch('/api/auth/login', { cache: 'no-store' })
+      .then(r => {
+        if (r.status === 401) {
+          try { localStorage.removeItem('admin_authenticated') } catch {}
+          router.push('/login')
+        }
+      })
+      .catch(() => {})
   }, [router])
 
   return (

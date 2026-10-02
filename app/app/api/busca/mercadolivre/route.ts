@@ -211,7 +211,7 @@ export async function POST(request: Request) {
       for (const nicho of nichosReq) {
         const res = await fetch(new URL('/api/busca/mercadolivre', 'http://localhost:3000').toString(), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-cron-secret': process.env.CRON_SECRET || '' },
           body: JSON.stringify({ nicho, limite }),
         })
         const data = await res.json()

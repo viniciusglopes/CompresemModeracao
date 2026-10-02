@@ -60,7 +60,7 @@ export function adminDaRequisicao(request: Request): string | null {
   return validarTokenAdmin(lerCookie(request, COOKIE_ADMIN))
 }
 
-function cronValido(request: Request): boolean {
+export function cronValido(request: Request): boolean {
   const esperado = process.env.CRON_SECRET
   const recebido = request.headers.get('x-cron-secret')
   return !!esperado && !!recebido && iguais(recebido, esperado)
